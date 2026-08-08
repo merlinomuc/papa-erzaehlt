@@ -154,10 +154,6 @@
 <body>
 
 
-<!-- =====================================================
-     LOGIN
-===================================================== -->
-
 <div id="loginView">
 
     <h1>Papa erzählt</h1>
@@ -201,10 +197,6 @@
 
 </div>
 
-
-<!-- =====================================================
-     APP
-===================================================== -->
 
 <div id="appView">
 
@@ -274,14 +266,14 @@
 
         <p>
             Die Leseansicht für Familienmitglieder
-            bauen wir im nächsten Schritt.
+            bauen wir später separat.
         </p>
 
     </div>
 
 
     <div id="debug">
-        Version: auth-v2
+        Version: render-v1
     </div>
 
 
@@ -306,7 +298,7 @@
 ========================================================= */
 
 const API =
-    "http://127.0.0.1:8000";
+    "https://papa-erzaehlt-api.onrender.com";
 
 const ROMAN_PROFILE_ID =
     "4f310747-c3ed-4cc0-9b6f-5896433c7217";
@@ -315,7 +307,7 @@ const SUPABASE_URL =
     "https://jmzauodqntkdpkftbxrd.supabase.co";
 
 const SUPABASE_KEY =
-    "HIER_DEINEN_PUBLISHABLE_KEY_EINSETZEN";
+    "HIER_DEINEN_BEREITS_VERWENDETEN_PUBLISHABLE_KEY_EINSETZEN";
 
 
 const supabaseClient =
@@ -680,13 +672,6 @@ async function openApp() {
         me.role === "admin"
     ) {
 
-        /*
-        Für den Moment arbeitet der Admin
-        mit Romans Profil.
-        Später bekommt der Admin eine
-        richtige Profilauswahl.
-        */
-
         currentProfileId =
             ROMAN_PROFILE_ID;
 
@@ -1011,7 +996,7 @@ function resetView() {
 
 
     debugElement.textContent =
-        "Version: auth-v2";
+        "Version: render-v1";
 }
 
 
@@ -1290,7 +1275,7 @@ async function uploadRecording() {
 
 
         debugElement.textContent =
-            `Version: auth-v2 | Audio: ${
+            `Version: render-v1 | Audio: ${
                 Math.round(
                     audioBlob.size
                     / 1024
