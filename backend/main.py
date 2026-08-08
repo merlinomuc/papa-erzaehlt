@@ -4,6 +4,7 @@ import random
 import subprocess
 import tempfile
 from datetime import datetime, timezone
+from uuid import uuid4
 
 from dotenv import load_dotenv
 from fastapi import (
@@ -28,7 +29,9 @@ from supabase import create_client, Client
 load_dotenv()
 
 SUPABASE_URL = os.getenv("SUPABASE_URL")
-SUPABASE_SERVICE_ROLE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY")
+SUPABASE_SERVICE_ROLE_KEY = os.getenv(
+    "SUPABASE_SERVICE_ROLE_KEY"
+)
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 
 FFMPEG_PATH = os.getenv(
@@ -40,7 +43,6 @@ FRONTEND_ORIGIN = os.getenv(
     "FRONTEND_ORIGIN",
     "http://127.0.0.1:5500",
 )
-
 
 if not SUPABASE_URL:
     raise RuntimeError("SUPABASE_URL fehlt.")
@@ -110,6 +112,10 @@ class AnswerCreate(BaseModel):
     text: str
 
 
+class FreeAnswerCreate(BaseModel):
+    profile_id: str
+
+
 class FollowUpCreate(BaseModel):
     profile_id: str
     parent_answer_id: str
@@ -121,7 +127,13 @@ class VisibilityUpdate(BaseModel):
 
 
 class DiscardAnswerRequest(BaseModel):
-    history_id: str
+    history_id: str | None = None
+
+
+class TimelineUpdate(BaseModel):
+    timeline_year: int | None = None
+    timeline_label: str | None = None
+    timeline_confidence: str | None = None
 
 
 # =========================================================
@@ -129,7 +141,9 @@ class DiscardAnswerRequest(BaseModel):
 # =========================================================
 
 def get_current_app_user(
-    authorization: str | None = Header(default=None)
+    authorization: str | None = Header(
+        default=None
+    )
 ):
     if not authorization:
         raise HTTPException(
@@ -157,7 +171,10 @@ def get_current_app_user(
         )
 
     try:
-        auth_response = supabase.auth.get_user(token)
+        auth_response = (
+            supabase.auth.get_user(token)
+        )
+
         auth_user = auth_response.user
 
     except Exception as exc:
@@ -165,20 +182,27 @@ def get_current_app_user(
 
         raise HTTPException(
             status_code=401,
-            detail="Session ist ungültig oder abgelaufen.",
+            detail=(
+                "Session ist ungültig "
+                "oder abgelaufen."
+            ),
         )
 
     if not auth_user:
         raise HTTPException(
             status_code=401,
-            detail="Benutzer konnte nicht ermittelt werden.",
+            detail=(
+                "Benutzer konnte nicht "
+                "ermittelt werden."
+            ),
         )
 
     result = (
         supabase
         .table("app_users")
         .select(
-            "id, auth_user_id, display_name, role, profile_id"
+            "id, auth_user_id, "
+            "display_name, role, profile_id"
         )
         .eq(
             "auth_user_id",
@@ -191,7 +215,10 @@ def get_current_app_user(
     if not result.data:
         raise HTTPException(
             status_code=403,
-            detail="Dieser Benutzer ist nicht für die App freigeschaltet.",
+            detail=(
+                "Dieser Benutzer ist nicht "
+                "für die App freigeschaltet."
+            ),
         )
 
     app_user = result.data[0]
@@ -236,8 +263,41 @@ def authorize_profile(
     ):
         raise HTTPException(
             status_code=403,
-            detail="Dieses Profil gehört nicht zum angemeldeten Benutzer.",
+            detail=(
+                "Dieses Profil gehört nicht "
+                "zum angemeldeten Benutzer."
+            ),
         )
+
+
+def authorize_read_profile(
+    current_user,
+    profile_id: str,
+):
+    role = current_user["role"]
+
+    if role == "admin":
+        return
+
+    if role == "reader":
+        return
+
+    if role == "narrator":
+        own_profile_id = current_user.get(
+            "profile_id"
+        )
+
+        if (
+            own_profile_id
+            and str(own_profile_id)
+            == str(profile_id)
+        ):
+            return
+
+    raise HTTPException(
+        status_code=403,
+        detail="Keine Leseberechtigung.",
+    )
 
 
 def get_answer_or_404(answer_id: str):
@@ -300,12 +360,27 @@ def me(
     )
 ):
     return {
-        "id": current_user["id"],
-        "auth_user_id": current_user["auth_user_id"],
-        "display_name": current_user["display_name"],
-        "role": current_user["role"],
-        "profile_id": current_user.get("profile_id"),
-        "email": current_user.get("email"),
+        "id":
+            current_user["id"],
+
+        "auth_user_id":
+            current_user["auth_user_id"],
+
+        "display_name":
+            current_user["display_name"],
+
+        "role":
+            current_user["role"],
+
+        "profile_id":
+            current_user.get(
+                "profile_id"
+            ),
+
+        "email":
+            current_user.get(
+                "email"
+            ),
     }
 
 
@@ -321,7 +396,10 @@ def profiles(
 ):
     role = current_user["role"]
 
-    if role == "admin":
+    if role in (
+        "admin",
+        "reader",
+    ):
         result = (
             supabase
             .table("profiles")
@@ -350,21 +428,285 @@ def profiles(
 
         return result.data
 
-    if role == "reader":
-        result = (
-            supabase
-            .table("profiles")
-            .select("*")
-            .order("display_name")
-            .execute()
-        )
-
-        return result.data
-
     raise HTTPException(
         status_code=403,
         detail="Keine Berechtigung.",
     )
+
+
+# =========================================================
+# ARCHIV / ERINNERUNGEN
+# =========================================================
+
+@app.get("/archive")
+def archive(
+    profile_id: str,
+    current_user=Depends(
+        get_current_app_user
+    ),
+):
+    authorize_read_profile(
+        current_user,
+        profile_id,
+    )
+
+    answers_result = (
+        supabase
+        .table("answers")
+        .select(
+            "id, profile_id, question_id, "
+            "original_transcript, visibility, "
+            "audio_path, answered_at, created_at, "
+            "timeline_year, timeline_label, "
+            "timeline_confidence"
+        )
+        .eq(
+            "profile_id",
+            profile_id,
+        )
+        .order(
+            "answered_at",
+            desc=True,
+        )
+        .execute()
+    )
+
+    answers = answers_result.data or []
+
+    if not answers:
+        return {
+            "items": []
+        }
+
+    memories_result = (
+        supabase
+        .table("memories")
+        .select("*")
+        .in_(
+            "answer_id",
+            [
+                row["id"]
+                for row in answers
+            ],
+        )
+        .execute()
+    )
+
+    memory_map = {
+        row["answer_id"]: row
+        for row in (
+            memories_result.data
+            or []
+        )
+    }
+
+    question_ids = list(
+        {
+            row["question_id"]
+            for row in answers
+            if row.get("question_id")
+        }
+    )
+
+    question_map = {}
+
+    if question_ids:
+        question_result = (
+            supabase
+            .table("questions")
+            .select(
+                "id, text, category, source"
+            )
+            .in_(
+                "id",
+                question_ids,
+            )
+            .execute()
+        )
+
+        question_map = {
+            row["id"]: row
+            for row in (
+                question_result.data
+                or []
+            )
+        }
+
+    items = []
+
+    for answer in answers:
+        question = None
+
+        if answer.get("question_id"):
+            question = question_map.get(
+                answer["question_id"]
+            )
+
+        items.append(
+            {
+                "answer_id":
+                    answer["id"],
+
+                "question":
+                    question,
+
+                "is_free_memory":
+                    answer.get(
+                        "question_id"
+                    ) is None,
+
+                "transcript":
+                    answer.get(
+                        "original_transcript"
+                    )
+                    or "",
+
+                "visibility":
+                    answer.get(
+                        "visibility"
+                    )
+                    or "all",
+
+                "has_audio":
+                    bool(
+                        answer.get(
+                            "audio_path"
+                        )
+                    ),
+
+                "answered_at":
+                    answer.get(
+                        "answered_at"
+                    ),
+
+                "created_at":
+                    answer.get(
+                        "created_at"
+                    ),
+
+                "timeline_year":
+                    answer.get(
+                        "timeline_year"
+                    ),
+
+                "timeline_label":
+                    answer.get(
+                        "timeline_label"
+                    ),
+
+                "timeline_confidence":
+                    answer.get(
+                        "timeline_confidence"
+                    ),
+
+                "memory":
+                    memory_map.get(
+                        answer["id"]
+                    ),
+            }
+        )
+
+    return {
+        "items": items
+    }
+
+
+# =========================================================
+# ZEITANGABE ÄNDERN
+# =========================================================
+
+@app.post("/answer/{answer_id}/timeline")
+def update_timeline(
+    answer_id: str,
+    payload: TimelineUpdate,
+    current_user=Depends(
+        get_current_app_user
+    ),
+):
+    answer = get_answer_or_404(
+        answer_id
+    )
+
+    authorize_profile(
+        current_user,
+        answer["profile_id"],
+    )
+
+    if (
+        payload.timeline_confidence
+        not in (
+            None,
+            "exact",
+            "approximate",
+            "unknown",
+        )
+    ):
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                "Ungültige timeline_confidence."
+            ),
+        )
+
+    if (
+        payload.timeline_year is not None
+        and (
+            payload.timeline_year < 1800
+            or payload.timeline_year > 2100
+        )
+    ):
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                "Bitte eine plausible "
+                "Jahreszahl eingeben."
+            ),
+        )
+
+    label = (
+        payload.timeline_label.strip()
+        if payload.timeline_label
+        else None
+    )
+
+    update_data = {
+        "timeline_year":
+            payload.timeline_year,
+
+        "timeline_label":
+            label,
+
+        "timeline_confidence":
+            (
+                payload.timeline_confidence
+                or (
+                    "unknown"
+                    if payload.timeline_year
+                    is None
+                    else "approximate"
+                )
+            ),
+    }
+
+    result = (
+        supabase
+        .table("answers")
+        .update(update_data)
+        .eq(
+            "id",
+            answer_id,
+        )
+        .execute()
+    )
+
+    return {
+        "status": "updated",
+        "answer": (
+            result.data[0]
+            if result.data
+            else update_data
+        ),
+    }
 
 
 # =========================================================
@@ -406,7 +748,10 @@ def next_question(
         .execute()
     )
 
-    questions = questions_result.data or []
+    questions = (
+        questions_result.data
+        or []
+    )
 
     if not questions:
         raise HTTPException(
@@ -436,7 +781,9 @@ def next_question(
         if (
             row.get("status")
             == "answered"
-            and row.get("question_id")
+            and row.get(
+                "question_id"
+            )
         )
     }
 
@@ -459,12 +806,19 @@ def next_question(
         .table("question_history")
         .insert(
             {
-                "profile_id": profile_id,
-                "question_id": selected["id"],
-                "status": "shown",
-                "shown_at": datetime.now(
-                    timezone.utc
-                ).isoformat(),
+                "profile_id":
+                    profile_id,
+
+                "question_id":
+                    selected["id"],
+
+                "status":
+                    "shown",
+
+                "shown_at":
+                    datetime.now(
+                        timezone.utc
+                    ).isoformat(),
             }
         )
         .execute()
@@ -473,8 +827,11 @@ def next_question(
     history = history_insert.data[0]
 
     return {
-        "history_id": history["id"],
-        "question": selected,
+        "history_id":
+            history["id"],
+
+        "question":
+            selected,
     }
 
 
@@ -508,7 +865,10 @@ def create_follow_up(
     ):
         raise HTTPException(
             status_code=400,
-            detail="Antwort gehört nicht zu diesem Profil.",
+            detail=(
+                "Antwort gehört nicht "
+                "zu diesem Profil."
+            ),
         )
 
     question_insert = (
@@ -516,9 +876,15 @@ def create_follow_up(
         .table("questions")
         .insert(
             {
-                "text": payload.text,
-                "category": "Nachfrage",
-                "source": "follow_up",
+                "text":
+                    payload.text,
+
+                "category":
+                    "Nachfrage",
+
+                "source":
+                    "follow_up",
+
                 "parent_answer_id":
                     payload.parent_answer_id,
             }
@@ -526,7 +892,9 @@ def create_follow_up(
         .execute()
     )
 
-    question = question_insert.data[0]
+    question = (
+        question_insert.data[0]
+    )
 
     history_insert = (
         supabase
@@ -630,10 +998,13 @@ def question_skipped(
         .table("question_history")
         .update(
             {
-                "status": "skipped",
-                "skipped_at": datetime.now(
-                    timezone.utc
-                ).isoformat(),
+                "status":
+                    "skipped",
+
+                "skipped_at":
+                    datetime.now(
+                        timezone.utc
+                    ).isoformat(),
             }
         )
         .eq("id", history_id)
@@ -646,7 +1017,7 @@ def question_skipped(
 
 
 # =========================================================
-# ANTWORT ANLEGEN
+# ANTWORT AUF FRAGE
 # =========================================================
 
 @app.post("/answer")
@@ -740,6 +1111,66 @@ def create_answer(
 
 
 # =========================================================
+# FREIE ERINNERUNG
+# =========================================================
+
+@app.post("/answer/free")
+def create_free_answer(
+    payload: FreeAnswerCreate,
+    current_user=Depends(
+        get_current_app_user
+    ),
+):
+    authorize_profile(
+        current_user,
+        payload.profile_id,
+    )
+
+    insert_result = (
+        supabase
+        .table("answers")
+        .insert(
+            {
+                "profile_id":
+                    payload.profile_id,
+
+                "session_id":
+                    None,
+
+                "question_id":
+                    None,
+
+                "original_transcript":
+                    "",
+
+                "cleaned_transcript":
+                    None,
+
+                "visibility":
+                    "all",
+
+                "include_in_memoir":
+                    False,
+
+                "answered_at":
+                    datetime.now(
+                        timezone.utc
+                    ).isoformat(),
+
+                "timeline_confidence":
+                    "unknown",
+            }
+        )
+        .execute()
+    )
+
+    return {
+        "answer":
+            insert_result.data[0]
+    }
+
+
+# =========================================================
 # ENTWURF VERWERFEN
 # =========================================================
 
@@ -755,34 +1186,29 @@ def discard_answer(
         answer_id
     )
 
-    history = get_history_or_404(
-        payload.history_id
-    )
-
     authorize_profile(
         current_user,
         answer["profile_id"],
     )
 
-    if (
-        str(history["profile_id"])
-        != str(answer["profile_id"])
-    ):
-        raise HTTPException(
-            status_code=400,
-            detail="Frage und Antwort gehören nicht zusammen.",
+    history = None
+
+    if payload.history_id:
+        history = get_history_or_404(
+            payload.history_id
         )
 
-    if (
-        history.get("question_id")
-        and answer.get("question_id")
-        and str(history["question_id"])
-        != str(answer["question_id"])
-    ):
-        raise HTTPException(
-            status_code=400,
-            detail="Frage und Antwort gehören nicht zusammen.",
-        )
+        if (
+            str(history["profile_id"])
+            != str(answer["profile_id"])
+        ):
+            raise HTTPException(
+                status_code=400,
+                detail=(
+                    "Frage und Antwort "
+                    "gehören nicht zusammen."
+                ),
+            )
 
     audio_path = answer.get(
         "audio_path"
@@ -798,6 +1224,7 @@ def discard_answer(
                     [audio_path]
                 )
             )
+
         except Exception as exc:
             print(
                 "AUDIO DELETE WARNING:",
@@ -815,6 +1242,7 @@ def discard_answer(
             )
             .execute()
         )
+
     except Exception as exc:
         print(
             "MEMORY DELETE WARNING:",
@@ -832,27 +1260,28 @@ def discard_answer(
         .execute()
     )
 
-    (
-        supabase
-        .table("question_history")
-        .update(
-            {
-                "status":
-                    "shown",
+    if history:
+        (
+            supabase
+            .table("question_history")
+            .update(
+                {
+                    "status":
+                        "shown",
 
-                "answered_at":
-                    None,
+                    "answered_at":
+                        None,
 
-                "skipped_at":
-                    None,
-            }
+                    "skipped_at":
+                        None,
+                }
+            )
+            .eq(
+                "id",
+                payload.history_id,
+            )
+            .execute()
         )
-        .eq(
-            "id",
-            payload.history_id,
-        )
-        .execute()
-    )
 
     return {
         "status":
@@ -884,7 +1313,10 @@ def update_visibility(
     ):
         raise HTTPException(
             status_code=400,
-            detail="visibility muss 'family' oder 'all' sein.",
+            detail=(
+                "visibility muss "
+                "'family' oder 'all' sein."
+            ),
         )
 
     answer = get_answer_or_404(
@@ -976,7 +1408,10 @@ async def upload_audio(
     if extension not in allowed_extensions:
         raise HTTPException(
             status_code=400,
-            detail="Nicht unterstütztes Audioformat.",
+            detail=(
+                "Nicht unterstütztes "
+                "Audioformat."
+            ),
         )
 
     file_bytes = await audio.read()
@@ -990,8 +1425,6 @@ async def upload_audio(
     now = datetime.now(
         timezone.utc
     )
-
-    from uuid import uuid4
 
     storage_path = (
         f"{answer['profile_id']}/"
@@ -1027,7 +1460,10 @@ async def upload_audio(
 
         raise HTTPException(
             status_code=500,
-            detail="Audio konnte nicht gespeichert werden.",
+            detail=(
+                "Audio konnte nicht "
+                "gespeichert werden."
+            ),
         )
 
     (
@@ -1085,7 +1521,10 @@ def transcribe_answer(
     if not audio_path:
         raise HTTPException(
             status_code=400,
-            detail="Für diese Antwort ist kein Audio gespeichert.",
+            detail=(
+                "Für diese Antwort ist "
+                "kein Audio gespeichert."
+            ),
         )
 
     try:
@@ -1106,7 +1545,10 @@ def transcribe_answer(
 
         raise HTTPException(
             status_code=500,
-            detail="Audio konnte nicht geladen werden.",
+            detail=(
+                "Audio konnte nicht "
+                "geladen werden."
+            ),
         )
 
     original_extension = (
@@ -1123,6 +1565,7 @@ def transcribe_answer(
             delete=False,
             suffix=f".{original_extension}",
         ) as temp_source:
+
             temp_source.write(
                 audio_bytes
             )
@@ -1135,6 +1578,7 @@ def transcribe_answer(
             delete=False,
             suffix=".wav",
         ) as temp_wav:
+
             wav_file = (
                 temp_wav.name
             )
@@ -1167,13 +1611,17 @@ def transcribe_answer(
 
             raise HTTPException(
                 status_code=500,
-                detail="Audio konnte nicht vorbereitet werden.",
+                detail=(
+                    "Audio konnte nicht "
+                    "vorbereitet werden."
+                ),
             )
 
         with open(
             wav_file,
             "rb",
         ) as audio_handle:
+
             transcription = (
                 openai_client
                 .audio
@@ -1233,6 +1681,7 @@ def transcribe_answer(
             ):
                 try:
                     os.remove(path)
+
                 except OSError:
                     pass
 
@@ -1267,7 +1716,10 @@ def analyze_answer(
     if not transcript:
         raise HTTPException(
             status_code=400,
-            detail="Die Antwort enthält noch kein Transkript.",
+            detail=(
+                "Die Antwort enthält "
+                "noch kein Transkript."
+            ),
         )
 
     question_text = ""
@@ -1281,7 +1733,10 @@ def analyze_answer(
             supabase
             .table("questions")
             .select("text")
-            .eq("id", question_id)
+            .eq(
+                "id",
+                question_id,
+            )
             .limit(1)
             .execute()
         )
@@ -1296,14 +1751,24 @@ def analyze_answer(
                 )
             )
 
+    if question_text:
+        context_text = f"""
+Frage:
+{question_text}
+"""
+    else:
+        context_text = """
+Es handelt sich um eine freie Erinnerung.
+Es wurde vorher keine Frage gestellt.
+"""
+
     prompt = f"""
 Du analysierst eine persönliche Lebenserinnerung
 für ein privates Familienarchiv.
 
-Frage:
-{question_text}
+{context_text}
 
-Antwort:
+Erzählung:
 {transcript}
 
 Antworte ausschließlich mit gültigem JSON.
@@ -1311,7 +1776,7 @@ Antworte ausschließlich mit gültigem JSON.
 Format:
 
 {{
-  "summary": "Kurze sachliche Zusammenfassung",
+  "summary": "Kurze natürliche Zusammenfassung",
   "people": [],
   "places": [],
   "years": [],
@@ -1319,15 +1784,18 @@ Format:
   "keywords": [],
   "follow_up_question": "",
   "privacy_signal": false,
-  "privacy_reason": ""
+  "privacy_reason": "",
+  "timeline_year": null,
+  "timeline_label": "",
+  "timeline_confidence": "unknown"
 }}
 
 Regeln:
 
 summary:
-Kurze, natürliche Zusammenfassung.
+Kurze, natürliche und respektvolle
+Zusammenfassung.
 Keine neuen Tatsachen erfinden.
-Formuliere freundlich und respektvoll.
 
 people:
 Genannte Personen oder Beziehungen.
@@ -1336,7 +1804,8 @@ places:
 Genannte Orte.
 
 years:
-Jahreszahlen oder Zeitangaben.
+Im Text tatsächlich genannte Jahreszahlen
+oder klare Zeitangaben.
 
 topics:
 Wichtige Themen.
@@ -1345,15 +1814,44 @@ keywords:
 Wichtige Stichwörter.
 
 follow_up_question:
-Eine kurze, natürliche und respektvolle Nachfrage,
-wenn sich eine interessante Vertiefung anbietet.
-Wenn nicht, leerer String.
+Eine kurze natürliche Nachfrage,
+wenn sich eine interessante Vertiefung
+anbietet.
+Das gilt auch für freie Erinnerungen.
+Sonst leerer String.
+
+ZEITLEISTE:
+
+timeline_year:
+Nur eine vierstellige Jahreszahl,
+wenn sich aus der Erzählung selbst
+ein sinnvolles Jahr ergibt.
+
+timeline_label:
+Natürliche Bezeichnung wie:
+"1945"
+"etwa 1950"
+"Sommer 1962"
+
+timeline_confidence:
+"exact", wenn das Jahr klar genannt wurde.
+"approximate", wenn die Person selbst
+ungefähr ein Jahr nennt.
+"unknown", wenn kein belastbares Jahr
+vorhanden ist.
+
+WICHTIG:
+Keine historischen Jahreszahlen aus
+deinem Weltwissen ergänzen.
+Keine Jahreszahl bloß erraten.
+Bei Unsicherheit timeline_year = null
+und timeline_confidence = "unknown".
 
 PRIVACY:
 
 privacy_signal = true NUR wenn die Person
-klar ausdrückt, dass die Aussage vertraulich,
-privat oder nicht für alle bestimmt sein soll.
+klar ausdrückt, dass die Aussage vertraulich
+oder nicht für alle bestimmt sein soll.
 
 Beispiele TRUE:
 - "Das bleibt aber unter uns."
@@ -1367,14 +1865,14 @@ Beispiele FALSE:
 - "Das ist kein Geheimnis."
 - "Das kann ruhig jeder wissen."
 - "Das kannst du allen erzählen."
-- Persönliche Inhalte ohne ausdrücklichen Wunsch
-  nach Vertraulichkeit.
+- Persönliche Inhalte ohne ausdrücklichen
+  Vertraulichkeitswunsch.
 
 Bei Unsicherheit false.
 
 privacy_reason:
-Bei true kurze Erklärung.
-Sonst leer.
+Bei true kurze Erklärung,
+sonst leer.
 """
 
     try:
@@ -1505,6 +2003,78 @@ Sonst leer.
             privacy_value
         )
 
+    timeline_year = analysis.get(
+        "timeline_year"
+    )
+
+    timeline_label = (
+        analysis.get(
+            "timeline_label",
+            ""
+        )
+        or ""
+    ).strip()
+
+    timeline_confidence = (
+        analysis.get(
+            "timeline_confidence",
+            "unknown"
+        )
+        or "unknown"
+    )
+
+    if timeline_confidence not in (
+        "exact",
+        "approximate",
+        "unknown",
+    ):
+        timeline_confidence = "unknown"
+
+    if not isinstance(
+        timeline_year,
+        int,
+    ):
+        timeline_year = None
+
+    if (
+        timeline_year is not None
+        and (
+            timeline_year < 1800
+            or timeline_year > 2100
+        )
+    ):
+        timeline_year = None
+        timeline_confidence = "unknown"
+
+    if (
+        answer.get("timeline_year")
+        is None
+    ):
+        (
+            supabase
+            .table("answers")
+            .update(
+                {
+                    "timeline_year":
+                        timeline_year,
+
+                    "timeline_label":
+                        (
+                            timeline_label
+                            or None
+                        ),
+
+                    "timeline_confidence":
+                        timeline_confidence,
+                }
+            )
+            .eq(
+                "id",
+                answer_id,
+            )
+            .execute()
+        )
+
     return {
         "status":
             "analyzed",
@@ -1529,4 +2099,13 @@ Sonst leer.
                 "privacy_reason",
                 ""
             ),
+
+        "timeline_year":
+            timeline_year,
+
+        "timeline_label":
+            timeline_label,
+
+        "timeline_confidence":
+            timeline_confidence,
     }
