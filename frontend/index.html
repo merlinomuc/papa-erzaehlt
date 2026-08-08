@@ -11,7 +11,7 @@
 
     <meta
         name="theme-color"
-        content="#211713"
+        content="#170f0c"
     >
 
     <title>Romans Erinnerungen</title>
@@ -20,47 +20,36 @@
 
     <style>
 
-        /* =========================================================
-           FARBEN
-        ========================================================= */
-
         :root {
-            --leather-1: #18100d;
-            --leather-2: #251813;
-            --leather-3: #33221a;
+            --night: #130c0a;
+            --leather: #251612;
+            --leather-light: #3b241d;
 
-            --paper-1: #fff9ec;
-            --paper-2: #f5e8cf;
-            --paper-3: #e7d3ad;
+            --paper: #f4e3c2;
+            --paper-light: #fff8e8;
+            --paper-dark: #dbc095;
 
-            --ink: #2b211a;
-            --ink-soft: #766454;
-            --ink-faint: #a18d75;
+            --ink: #2c2119;
+            --ink-soft: #725f4b;
+            --ink-faint: #a38c70;
 
-            --wine: #6d3534;
-            --wine-dark: #3d1d1d;
-            --wine-light: #955c56;
+            --wine: #6d3334;
+            --wine-dark: #3e1c1e;
+            --wine-light: #985d56;
 
-            --forest: #3d5144;
+            --green: #3d5043;
 
-            --brass: #a77a34;
-            --brass-light: #d5b56e;
-            --brass-bright: #f0d99c;
+            --gold: #9b6a28;
+            --gold-mid: #c4994f;
+            --gold-light: #ead39a;
+            --gold-bright: #ffe7aa;
 
-            --line: rgba(129, 91, 45, .24);
-            --line-dark: rgba(83, 52, 26, .34);
+            --line: rgba(128, 86, 36, .24);
 
-            --deep-shadow:
-                0 40px 110px rgba(0,0,0,.48);
-
-            --page-shadow:
-                0 18px 45px rgba(48,31,17,.18);
+            --shadow:
+                0 45px 120px rgba(0,0,0,.52);
         }
 
-
-        /* =========================================================
-           BASIS
-        ========================================================= */
 
         * {
             box-sizing: border-box;
@@ -86,29 +75,20 @@
 
             background:
                 radial-gradient(
-                    circle at 50% 0%,
-                    rgba(120,76,42,.22),
-                    transparent 35%
+                    circle at 50% 5%,
+                    rgba(125,77,38,.23),
+                    transparent 32%
                 ),
-                repeating-linear-gradient(
-                    8deg,
-                    rgba(255,255,255,.009) 0,
-                    rgba(255,255,255,.009) 1px,
-                    transparent 1px,
-                    transparent 5px
-                ),
-                repeating-linear-gradient(
-                    98deg,
-                    rgba(255,255,255,.008) 0,
-                    rgba(255,255,255,.008) 1px,
-                    transparent 1px,
-                    transparent 7px
+                radial-gradient(
+                    circle at 10% 90%,
+                    rgba(98,49,35,.18),
+                    transparent 36%
                 ),
                 linear-gradient(
                     145deg,
-                    var(--leather-1),
-                    var(--leather-3) 55%,
-                    #160f0c
+                    var(--night),
+                    var(--leather-light) 50%,
+                    #110b09
                 );
 
             overflow-x: hidden;
@@ -119,16 +99,24 @@
             content: "";
             position: fixed;
             inset: 0;
+
             pointer-events: none;
 
             background:
+                repeating-linear-gradient(
+                    13deg,
+                    rgba(255,255,255,.008) 0,
+                    rgba(255,255,255,.008) 1px,
+                    transparent 1px,
+                    transparent 6px
+                ),
                 radial-gradient(
                     ellipse at center,
                     transparent 42%,
-                    rgba(0,0,0,.31) 100%
+                    rgba(0,0,0,.4)
                 );
 
-            z-index: -1;
+            z-index: -2;
         }
 
 
@@ -147,45 +135,117 @@
         button:focus-visible,
         input:focus-visible,
         select:focus-visible {
-            outline: 3px solid rgba(213,181,110,.55);
+            outline:
+                3px solid
+                rgba(234,211,154,.55);
+
             outline-offset: 4px;
         }
 
 
         /* =========================================================
-           START-LADEANSICHT
+           SCHWEBENDE GOLDPARTIKEL
+        ========================================================= */
+
+        .dust {
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            overflow: hidden;
+            z-index: 0;
+        }
+
+
+        .dust span {
+            position: absolute;
+
+            width: 3px;
+            height: 3px;
+
+            border-radius: 50%;
+
+            background:
+                rgba(255,225,157,.48);
+
+            box-shadow:
+                0 0 8px
+                rgba(255,220,145,.55);
+
+            animation:
+                dustFloat
+                var(--duration)
+                linear
+                infinite;
+
+            animation-delay:
+                var(--delay);
+        }
+
+
+        @keyframes dustFloat {
+            0% {
+                transform:
+                    translateY(110vh)
+                    translateX(0)
+                    scale(.5);
+
+                opacity: 0;
+            }
+
+            12% {
+                opacity: .7;
+            }
+
+            70% {
+                opacity: .3;
+            }
+
+            100% {
+                transform:
+                    translateY(-15vh)
+                    translateX(55px)
+                    scale(1.2);
+
+                opacity: 0;
+            }
+        }
+
+
+        /* =========================================================
+           STARTUP
         ========================================================= */
 
         #startupView {
             position: fixed;
             inset: 0;
+
             z-index: 1000;
 
             display: flex;
             align-items: center;
             justify-content: center;
 
+            color: #f3e3c5;
+
             background:
                 radial-gradient(
                     circle at center,
-                    #35231a,
-                    #17100d 70%
+                    #3a241a,
+                    #140d0b 72%
                 );
-
-            color: #f1e2c8;
         }
 
 
-        .startup-inner {
+        .startup-box {
             text-align: center;
         }
 
 
-        .startup-mark {
-            width: 78px;
-            height: 78px;
+        .startup-seal {
+            width: 94px;
+            height: 94px;
 
-            margin: 0 auto 22px;
+            margin: 0 auto 25px;
 
             display: flex;
             align-items: center;
@@ -193,57 +253,82 @@
 
             border-radius: 50%;
 
+            color: var(--gold-light);
+
+            font-size: 2.5rem;
+            font-style: italic;
+
             border:
-                1px solid
-                rgba(213,181,110,.55);
-
-            color: var(--brass-light);
-
-            font-size: 2rem;
+                2px solid
+                rgba(234,211,154,.65);
 
             box-shadow:
-                0 0 0 7px rgba(213,181,110,.05);
+                inset 0 0 0 6px
+                rgba(234,211,154,.06),
+
+                0 0 0 11px
+                rgba(234,211,154,.035),
+
+                0 0 35px
+                rgba(234,211,154,.13);
 
             animation:
-                startupPulse
-                1.9s
+                sealPulse
+                2.2s
                 ease-in-out
                 infinite;
         }
 
 
-        @keyframes startupPulse {
+        @keyframes sealPulse {
             0%,
             100% {
-                transform: scale(.96);
-                opacity: .72;
+                transform:
+                    scale(.96)
+                    rotate(-3deg);
+
+                filter:
+                    brightness(.9);
             }
 
             50% {
-                transform: scale(1.05);
-                opacity: 1;
+                transform:
+                    scale(1.045)
+                    rotate(2deg);
+
+                filter:
+                    brightness(1.25);
             }
         }
 
 
         .startup-title {
-            font-size: 1.55rem;
-            letter-spacing: .03em;
+            font-size: 1.65rem;
+        }
+
+
+        .startup-sub {
+            margin-top: 6px;
+
+            color:
+                #bca78a;
+
+            font-style: italic;
         }
 
 
         .startup-line {
-            position: relative;
-
-            width: 190px;
+            width: 220px;
             height: 1px;
 
-            margin: 19px auto 0;
+            margin:
+                21px
+                auto;
 
             overflow: hidden;
 
             background:
-                rgba(213,181,110,.16);
+                rgba(234,211,154,.15);
         }
 
 
@@ -251,38 +336,40 @@
             content: "";
             display: block;
 
-            width: 75px;
+            width: 90px;
             height: 100%;
 
             background:
                 linear-gradient(
                     90deg,
                     transparent,
-                    var(--brass-bright),
+                    var(--gold-bright),
                     transparent
                 );
 
             animation:
-                lineTravel
-                1.5s
+                lightTravel
+                1.6s
                 ease-in-out
                 infinite;
         }
 
 
-        @keyframes lineTravel {
+        @keyframes lightTravel {
             from {
-                transform: translateX(-80px);
+                transform:
+                    translateX(-100px);
             }
 
             to {
-                transform: translateX(210px);
+                transform:
+                    translateX(250px);
             }
         }
 
 
         /* =========================================================
-           LOGIN
+           LOGIN / BUCHDECKEL
         ========================================================= */
 
         #loginView {
@@ -293,108 +380,191 @@
             align-items: center;
             justify-content: center;
 
-            padding: 30px 18px;
+            padding: 30px 16px;
         }
 
 
-        .book-cover {
+        .cover {
             position: relative;
 
-            width: min(620px, 100%);
+            width:
+                min(
+                    650px,
+                    100%
+                );
 
             padding:
-                66px
-                62px
-                58px;
+                72px
+                65px
+                61px;
 
-            color: #f0e3ce;
+            overflow: hidden;
+
+            color:
+                #efe2cf;
 
             background:
                 repeating-linear-gradient(
                     90deg,
-                    rgba(255,255,255,.014) 0,
-                    rgba(255,255,255,.014) 1px,
+                    rgba(255,255,255,.012) 0,
+                    rgba(255,255,255,.012) 1px,
                     transparent 1px,
                     transparent 5px
                 ),
                 linear-gradient(
                     145deg,
-                    #402723,
-                    #241713 64%,
-                    #18100e
+                    #4a2925,
+                    #291713 58%,
+                    #160d0b
                 );
 
             border:
                 1px solid
-                rgba(217,183,113,.43);
+                rgba(234,211,154,.44);
 
             border-radius:
-                7px 18px 18px 7px;
+                5px 22px 22px 6px;
 
             box-shadow:
-                0 45px 120px rgba(0,0,0,.55),
-                inset 12px 0 25px rgba(0,0,0,.22),
-                inset -1px 0 rgba(255,255,255,.04);
+                0 45px 120px
+                rgba(0,0,0,.6),
+
+                inset
+                15px 0
+                30px
+                rgba(0,0,0,.26);
 
             animation:
-                coverReveal
-                .8s
-                cubic-bezier(.2,.8,.2,1)
+                coverIn
+                .9s
+                cubic-bezier(.16,.8,.2,1)
                 both;
         }
 
 
-        @keyframes coverReveal {
+        @keyframes coverIn {
             from {
                 opacity: 0;
+
                 transform:
-                    perspective(1000px)
-                    rotateY(-7deg)
-                    translateY(15px);
+                    perspective(1200px)
+                    rotateY(-9deg)
+                    translateY(16px);
             }
 
             to {
                 opacity: 1;
+
                 transform:
-                    perspective(1000px)
+                    perspective(1200px)
                     rotateY(0)
                     translateY(0);
             }
         }
 
 
-        .book-cover::before {
+        .cover::before {
             content: "";
+
             position: absolute;
-            inset: 16px;
+            inset: 17px;
+
+            pointer-events: none;
 
             border:
                 1px solid
-                rgba(218,184,113,.38);
+                rgba(234,211,154,.35);
 
             border-radius:
-                3px 11px 11px 3px;
+                2px 13px 13px 2px;
+        }
+
+
+        .cover::after {
+            content: "";
+
+            position: absolute;
+
+            left: 32px;
+            top: 0;
+            bottom: 0;
+
+            width: 1px;
+
+            background:
+                rgba(234,211,154,.17);
+
+            box-shadow:
+                7px 0 16px
+                rgba(0,0,0,.35);
+        }
+
+
+        .corner {
+            position: absolute;
+
+            width: 75px;
+            height: 75px;
+
+            opacity: .72;
 
             pointer-events: none;
         }
 
 
-        .book-cover::after {
+        .corner::before,
+        .corner::after {
             content: "";
 
             position: absolute;
 
-            top: 0;
-            bottom: 0;
-            left: 28px;
-
-            width: 1px;
-
             background:
-                rgba(218,184,113,.18);
+                var(--gold-mid);
+        }
 
-            box-shadow:
-                6px 0 13px rgba(0,0,0,.28);
+
+        .corner::before {
+            width: 100%;
+            height: 1px;
+        }
+
+
+        .corner::after {
+            width: 1px;
+            height: 100%;
+        }
+
+
+        .corner.tl {
+            top: 29px;
+            left: 44px;
+        }
+
+
+        .corner.tr {
+            top: 29px;
+            right: 29px;
+
+            transform:
+                scaleX(-1);
+        }
+
+
+        .corner.bl {
+            bottom: 29px;
+            left: 44px;
+
+            transform:
+                scaleY(-1);
+        }
+
+
+        .corner.br {
+            bottom: 29px;
+            right: 29px;
+
+            transform:
+                scale(-1);
         }
 
 
@@ -404,16 +574,18 @@
 
             text-align: center;
 
-            color: var(--brass-light);
+            color:
+                var(--gold-light);
 
             font-family:
                 Arial,
                 Helvetica,
                 sans-serif;
 
-            text-transform: uppercase;
+            font-size: .62rem;
             letter-spacing: .32em;
-            font-size: .63rem;
+
+            text-transform: uppercase;
         }
 
 
@@ -421,15 +593,18 @@
             position: relative;
             z-index: 2;
 
-            margin: 18px 0 13px;
+            margin:
+                18px
+                0
+                12px;
 
             text-align: center;
 
             font-size:
                 clamp(
-                    3rem,
+                    3.1rem,
                     10vw,
-                    5.2rem
+                    5.5rem
                 );
 
             line-height: .92;
@@ -449,28 +624,44 @@
 
             text-align: center;
 
-            color: #cdbca7;
+            color:
+                #cdbba5;
+
+            font-size: 1.08rem;
             font-style: italic;
         }
 
 
-        .cover-ornament {
+        .cover-ornament,
+        .gold-ornament {
             position: relative;
-            z-index: 2;
 
             display: flex;
             align-items: center;
-            gap: 14px;
+            justify-content: center;
+            gap: 15px;
 
-            width: min(380px, 80%);
+            width:
+                min(
+                    430px,
+                    80%
+                );
 
-            margin: 28px auto;
+            margin:
+                29px
+                auto;
+
+            color:
+                var(--gold-mid);
         }
 
 
         .cover-ornament::before,
-        .cover-ornament::after {
+        .cover-ornament::after,
+        .gold-ornament::before,
+        .gold-ornament::after {
             content: "";
+
             flex: 1;
             height: 1px;
 
@@ -478,19 +669,49 @@
                 linear-gradient(
                     90deg,
                     transparent,
-                    var(--brass-light)
+                    var(--gold-light)
                 );
         }
 
 
-        .cover-ornament::after {
-            transform: scaleX(-1);
+        .cover-ornament::after,
+        .gold-ornament::after {
+            transform:
+                scaleX(-1);
         }
 
 
-        .cover-ornament span {
-            color: var(--brass-light);
-            font-size: 1.5rem;
+        .cover-ornament span,
+        .gold-ornament span {
+            font-size: 1.65rem;
+
+            animation:
+                ornamentGlow
+                4s
+                ease-in-out
+                infinite;
+        }
+
+
+        @keyframes ornamentGlow {
+            0%,
+            100% {
+                opacity: .62;
+
+                filter:
+                    brightness(.85);
+            }
+
+            50% {
+                opacity: 1;
+
+                filter:
+                    brightness(1.4)
+                    drop-shadow(
+                        0 0 5px
+                        rgba(234,211,154,.32)
+                    );
+            }
         }
 
 
@@ -498,20 +719,22 @@
             position: relative;
             z-index: 2;
 
-            max-width: 450px;
+            max-width: 460px;
 
             margin:
                 0 auto
-                26px;
+                27px;
 
             text-align: center;
 
-            color: #cdbda9;
+            color:
+                #c8b59d;
+
             line-height: 1.65;
         }
 
 
-        .book-cover label {
+        .cover label {
             position: relative;
             z-index: 2;
 
@@ -522,19 +745,19 @@
                 0
                 7px;
 
-            color: #bca991;
+            color:
+                #b9a48c;
 
             font-family:
                 Arial,
                 Helvetica,
                 sans-serif;
 
-            font-size: .73rem;
-            letter-spacing: .04em;
+            font-size: .74rem;
         }
 
 
-        .book-cover input {
+        .cover input {
             position: relative;
             z-index: 2;
 
@@ -544,16 +767,15 @@
                 15px
                 16px;
 
-            color: #f5eadc;
+            color:
+                #f6ebda;
 
             border:
                 1px solid
-                rgba(218,184,113,.28);
+                rgba(234,211,154,.25);
 
             background:
                 rgba(255,255,255,.055);
-
-            border-radius: 2px;
         }
 
 
@@ -563,7 +785,7 @@
 
             width: 100%;
 
-            margin-top: 24px;
+            margin-top: 25px;
         }
 
 
@@ -572,16 +794,18 @@
             z-index: 2;
 
             min-height: 25px;
-            margin-top: 15px;
 
-            color: #d7b7a8;
+            margin-top: 16px;
+
+            color:
+                #d7b4a8;
+
             text-align: center;
-            font-size: .9rem;
         }
 
 
         /* =========================================================
-           APP / AUFGESCHLAGENES BUCH
+           APP / BUCH
         ========================================================= */
 
         #appView {
@@ -590,91 +814,119 @@
 
 
         .desk {
-            width: 100%;
             min-height: 100vh;
 
             padding:
-                38px
-                20px
+                36px
+                18px
                 80px;
         }
 
 
-        .book-shadow {
-            position: relative;
-
+        .book-holder {
             width:
                 min(
-                    1180px,
+                    1220px,
                     100%
                 );
 
             margin: 0 auto;
+
+            position: relative;
+        }
+
+
+        .book-holder::after {
+            content: "";
+
+            position: absolute;
+
+            z-index: -1;
+
+            left: 6%;
+            right: 6%;
+            bottom: -32px;
+
+            height: 75px;
+
+            background:
+                radial-gradient(
+                    ellipse,
+                    rgba(0,0,0,.56),
+                    transparent 72%
+                );
+
+            filter: blur(16px);
         }
 
 
         .open-book {
             position: relative;
 
-            min-height: 820px;
+            min-height: 850px;
 
             padding:
-                58px
-                72px
-                56px;
+                59px
+                76px
+                60px;
 
             overflow: hidden;
 
             background:
                 linear-gradient(
                     90deg,
-                    #f5e8d0 0%,
-                    #fff9ed 43%,
-                    #ead8b8 49.6%,
-                    #d9c29d 50%,
-                    #f1e2c7 50.5%,
-                    #fffaf0 58%,
-                    #f5e8d0 100%
+                    #ead7b7 0%,
+                    #fff8e8 44%,
+                    #e2cba5 49.3%,
+                    #c7a979 50%,
+                    #e8d4af 50.7%,
+                    #fff8e8 57%,
+                    #ead7b7 100%
                 );
 
             border:
                 1px solid
-                rgba(85,54,27,.48);
+                rgba(81,50,22,.48);
 
             border-radius:
-                18px 26px 26px 18px;
+                20px 30px 30px 20px;
 
             box-shadow:
-                var(--deep-shadow),
-                inset 0 0 95px rgba(113,73,31,.08);
+                var(--shadow),
 
-            transform-origin: center bottom;
+                inset
+                0 0
+                100px
+                rgba(114,71,28,.09);
+
+            transform-origin:
+                center bottom;
 
             animation:
-                bookOpen
-                1s
-                cubic-bezier(.14,.76,.2,1)
+                openBook
+                1.15s
+                cubic-bezier(.15,.78,.2,1)
                 both;
         }
 
 
-        @keyframes bookOpen {
+        @keyframes openBook {
             0% {
                 opacity: 0;
 
                 transform:
-                    perspective(1500px)
-                    rotateX(10deg)
-                    scale(.965)
-                    translateY(20px);
+                    perspective(1600px)
+                    rotateX(13deg)
+                    scale(.95)
+                    translateY(30px);
             }
 
             100% {
                 opacity: 1;
 
                 transform:
-                    perspective(1500px)
-                    rotateX(0deg)
+                    perspective(1600px)
+                    rotateX(0)
                     scale(1)
                     translateY(0);
             }
@@ -688,23 +940,26 @@
 
             top: 0;
             bottom: 0;
+
             left: 50%;
 
-            width: 54px;
+            width: 70px;
 
-            transform: translateX(-50%);
+            transform:
+                translateX(-50%);
 
             pointer-events: none;
 
             background:
                 radial-gradient(
-                    ellipse at center,
-                    rgba(65,40,19,.20),
-                    rgba(65,40,19,.075) 35%,
-                    transparent 70%
+                    ellipse,
+                    rgba(74,42,17,.27),
+                    rgba(74,42,17,.07) 42%,
+                    transparent 73%
                 );
 
-            mix-blend-mode: multiply;
+            mix-blend-mode:
+                multiply;
         }
 
 
@@ -713,57 +968,101 @@
 
             position: absolute;
 
-            inset: 13px;
-
-            pointer-events: none;
+            inset: 14px;
 
             border:
                 1px solid
-                rgba(160,116,57,.22);
+                rgba(165,117,55,.25);
 
             border-radius:
-                12px 20px 20px 12px;
-        }
-
-
-        .page-edge-left,
-        .page-edge-right {
-            position: absolute;
-
-            top: 22px;
-            bottom: 22px;
-
-            width: 11px;
-
-            opacity: .52;
+                14px 21px 21px 14px;
 
             pointer-events: none;
         }
 
 
-        .page-edge-left {
-            left: 7px;
+        .book-corner {
+            position: absolute;
 
-            border-right:
-                1px solid
-                rgba(112,72,34,.21);
+            width: 92px;
+            height: 92px;
 
-            box-shadow:
-                5px 0 10px
-                rgba(91,57,27,.08);
+            z-index: 3;
+
+            pointer-events: none;
+
+            opacity: .58;
         }
 
 
-        .page-edge-right {
-            right: 7px;
+        .book-corner svg {
+            width: 100%;
+            height: 100%;
 
-            border-left:
-                1px solid
-                rgba(112,72,34,.21);
+            stroke:
+                var(--gold);
+
+            fill: none;
+
+            stroke-width: 1.15;
+        }
+
+
+        .book-corner.tl {
+            top: 25px;
+            left: 26px;
+        }
+
+
+        .book-corner.tr {
+            top: 25px;
+            right: 26px;
+
+            transform:
+                scaleX(-1);
+        }
+
+
+        .book-corner.bl {
+            bottom: 25px;
+            left: 26px;
+
+            transform:
+                scaleY(-1);
+        }
+
+
+        .book-corner.br {
+            bottom: 25px;
+            right: 26px;
+
+            transform:
+                scale(-1);
+        }
+
+
+        .spine-thread {
+            position: absolute;
+
+            top: 8%;
+            bottom: 8%;
+
+            left: 50%;
+
+            width: 1px;
+
+            z-index: 2;
+
+            background:
+                linear-gradient(
+                    transparent,
+                    rgba(85,50,21,.4),
+                    transparent
+                );
 
             box-shadow:
-                -5px 0 10px
-                rgba(91,57,27,.08);
+                1px 0
+                rgba(255,255,255,.25);
         }
 
 
@@ -780,7 +1079,7 @@
         .book-kicker {
             text-align: center;
 
-            color: var(--brass);
+            color: var(--gold);
 
             font-family:
                 Arial,
@@ -788,8 +1087,8 @@
                 sans-serif;
 
             text-transform: uppercase;
-            letter-spacing: .32em;
-            font-size: .61rem;
+            letter-spacing: .34em;
+            font-size: .6rem;
         }
 
 
@@ -797,123 +1096,111 @@
             margin:
                 12px
                 0
-                8px;
+                7px;
 
             text-align: center;
 
             font-size:
                 clamp(
-                    3.1rem,
+                    3.2rem,
                     7vw,
-                    5.1rem
+                    5.4rem
                 );
 
-            line-height: .96;
-            letter-spacing: -.045em;
             font-weight: normal;
+
+            letter-spacing: -.045em;
+            line-height: .95;
         }
 
 
         .book-subtitle {
             text-align: center;
 
-            color: var(--ink-soft);
+            color:
+                var(--ink-soft);
 
-            font-size: 1.03rem;
+            font-size: 1.08rem;
             font-style: italic;
         }
 
 
         /* =========================================================
-           ORNAMENT
+           R-SIEGEL
         ========================================================= */
 
-        .gold-ornament {
-            position: relative;
+        .roman-seal {
+            position: absolute;
+
+            top: 44px;
+            right: 57px;
+
+            width: 58px;
+            height: 58px;
 
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 16px;
 
-            width:
-                min(
-                    420px,
-                    82%
-                );
+            border-radius: 50%;
 
-            margin:
-                27px
-                auto
-                30px;
+            color:
+                #734139;
 
-            color: var(--brass);
-        }
+            border:
+                2px solid
+                rgba(116,65,57,.62);
 
+            font-size: 1.55rem;
+            font-style: italic;
 
-        .gold-ornament::before,
-        .gold-ornament::after {
-            content: "";
+            transform:
+                rotate(-9deg);
 
-            flex: 1;
+            opacity: .63;
 
-            height: 1px;
-
-            background:
-                linear-gradient(
-                    90deg,
-                    transparent,
-                    var(--brass-light)
-                );
-        }
-
-
-        .gold-ornament::after {
-            transform: scaleX(-1);
-        }
-
-
-        .gold-ornament span {
-            font-size: 1.5rem;
+            box-shadow:
+                inset 0 0 0 4px
+                rgba(116,65,57,.07);
 
             animation:
-                goldGlint
-                4.5s
+                sealIdle
+                6s
                 ease-in-out
                 infinite;
         }
 
 
-        @keyframes goldGlint {
+        @keyframes sealIdle {
             0%,
             100% {
-                opacity: .65;
-                filter: brightness(.9);
+                transform:
+                    rotate(-9deg)
+                    scale(.98);
             }
 
             50% {
-                opacity: 1;
-                filter: brightness(1.3);
+                transform:
+                    rotate(-6deg)
+                    scale(1.03);
             }
         }
 
 
         /* =========================================================
-           KAPITEL-NAVIGATION
+           NAVIGATION
         ========================================================= */
 
         .chapter-nav {
-            position: relative;
-
             display: flex;
             justify-content: center;
             gap: 10px;
 
-            max-width: 720px;
+            max-width: 760px;
 
             margin:
                 0 auto
-                42px;
+                44px;
 
             padding:
                 11px
@@ -930,63 +1217,44 @@
         .chapter-nav button {
             position: relative;
 
-            min-width: 150px;
+            min-width: 155px;
 
             padding:
                 12px
-                22px;
+                24px;
 
             border: none;
+
             border-radius: 999px;
 
             background: transparent;
 
-            color: var(--ink-soft);
+            color:
+                var(--ink-soft);
 
             font-family:
                 Arial,
                 Helvetica,
                 sans-serif;
 
-            font-size: .84rem;
-            letter-spacing: .04em;
+            font-size: .83rem;
 
             transition:
-                transform .22s ease,
-                color .22s ease,
-                background .22s ease,
-                box-shadow .22s ease;
+                transform .25s ease,
+                background .25s ease,
+                box-shadow .25s ease;
         }
 
 
-        .chapter-nav button::after {
-            content: "";
-
-            position: absolute;
-
-            left: 25%;
-            right: 25%;
-            bottom: 5px;
-
-            height: 1px;
-
-            background:
-                var(--brass);
-
-            transform: scaleX(0);
-
-            transition:
-                transform .3s ease;
-        }
-
-
-        .chapter-nav button:hover::after {
-            transform: scaleX(1);
+        .chapter-nav button:hover {
+            transform:
+                translateY(-2px);
         }
 
 
         .chapter-nav button.active {
-            color: #fff6e8;
+            color:
+                #fff4e3;
 
             background:
                 linear-gradient(
@@ -996,18 +1264,13 @@
                 );
 
             box-shadow:
-                0 8px 22px
-                rgba(67,31,30,.24);
-        }
-
-
-        .chapter-nav button.active::after {
-            display: none;
+                0 9px 24px
+                rgba(70,30,31,.25);
         }
 
 
         /* =========================================================
-           VIEW TRANSITIONS
+           VIEW / SEITENWECHSEL
         ========================================================= */
 
         .view {
@@ -1019,72 +1282,70 @@
             display: block;
 
             animation:
-                pageTurn
-                .65s
-                cubic-bezier(.18,.72,.2,1)
+                pageSweep
+                .72s
+                cubic-bezier(.16,.75,.2,1)
                 both;
         }
 
 
-        @keyframes pageTurn {
+        @keyframes pageSweep {
             from {
                 opacity: 0;
 
                 transform:
-                    perspective(1000px)
-                    rotateY(-2deg)
-                    translateX(10px);
+                    perspective(1300px)
+                    rotateY(-4deg)
+                    translateX(18px);
             }
 
             to {
                 opacity: 1;
 
                 transform:
-                    perspective(1000px)
+                    perspective(1300px)
                     rotateY(0)
                     translateX(0);
             }
         }
 
 
-        /* =========================================================
-           TYPOGRAFIE
-        ========================================================= */
-
         .chapter-label {
             text-align: center;
 
-            color: var(--brass);
+            color:
+                var(--gold);
 
             font-family:
                 Arial,
                 Helvetica,
                 sans-serif;
 
-            font-size: .62rem;
+            font-size: .61rem;
             letter-spacing: .24em;
+
             text-transform: uppercase;
         }
 
 
         .chapter-title {
-            max-width: 790px;
+            max-width: 800px;
 
             margin:
                 10px
                 auto
-                12px;
+                11px;
 
             text-align: center;
 
             font-size:
                 clamp(
                     2rem,
-                    4vw,
-                    3rem
+                    4.2vw,
+                    3.05rem
                 );
 
-            line-height: 1.17;
+            line-height: 1.16;
             font-weight: normal;
         }
 
@@ -1094,18 +1355,74 @@
 
             margin:
                 0 auto
-                35px;
-
-            color: var(--ink-soft);
+                37px;
 
             text-align: center;
-            line-height: 1.7;
+
+            color:
+                var(--ink-soft);
+
+            line-height: 1.72;
+
+            font-style: italic;
         }
 
 
         /* =========================================================
-           ERZÄHL-STARTSEITE
+           STARTSEITE
         ========================================================= */
+
+        .intro-quote {
+            position: relative;
+
+            max-width: 620px;
+
+            margin:
+                7px
+                auto
+                39px;
+
+            padding:
+                12px
+                35px;
+
+            text-align: center;
+
+            color:
+                #8a704f;
+
+            font-size: 1.08rem;
+            font-style: italic;
+        }
+
+
+        .intro-quote::before,
+        .intro-quote::after {
+            position: absolute;
+
+            color:
+                rgba(155,106,40,.35);
+
+            font-size: 3rem;
+            line-height: 1;
+        }
+
+
+        .intro-quote::before {
+            content: "“";
+
+            left: 0;
+            top: -7px;
+        }
+
+
+        .intro-quote::after {
+            content: "”";
+
+            right: 0;
+            bottom: -22px;
+        }
+
 
         .opening-spread {
             display: grid;
@@ -1114,9 +1431,10 @@
                 1fr
                 1fr;
 
-            gap: 72px;
+            gap: 80px;
 
-            max-width: 980px;
+            max-width: 990px;
+
             margin: 0 auto;
         }
 
@@ -1124,16 +1442,17 @@
         .opening-half {
             position: relative;
 
-            min-height: 355px;
+            min-height: 360px;
 
             padding:
-                25px
-                31px;
+                27px
+                30px;
 
             display: flex;
             flex-direction: column;
-            justify-content: center;
+
             align-items: center;
+            justify-content: center;
 
             text-align: center;
         }
@@ -1144,24 +1463,27 @@
 
             position: absolute;
 
-            top: 8%;
-            right: -37px;
-            bottom: 8%;
+            right: -40px;
+
+            top: 7%;
+            bottom: 7%;
 
             width: 1px;
 
             background:
                 linear-gradient(
                     transparent,
-                    rgba(129,91,45,.23),
+                    rgba(155,106,40,.26),
                     transparent
                 );
         }
 
 
-        .large-initial {
-            width: 72px;
-            height: 72px;
+        .choice-medallion {
+            position: relative;
+
+            width: 78px;
+            height: 78px;
 
             display: flex;
             align-items: center;
@@ -1171,16 +1493,24 @@
 
             border-radius: 50%;
 
+            color: var(--gold);
+
             border:
                 1px solid
-                rgba(167,122,52,.45);
+                rgba(155,106,40,.48);
 
-            color: var(--brass);
-
-            font-size: 2rem;
+            background:
+                radial-gradient(
+                    circle,
+                    rgba(255,250,237,.75),
+                    rgba(229,203,158,.25)
+                );
 
             box-shadow:
-                0 0 0 6px rgba(167,122,52,.04);
+                0 0 0 6px
+                rgba(155,106,40,.035);
+
+            font-size: 2.2rem;
 
             transition:
                 transform .3s ease,
@@ -1188,15 +1518,33 @@
         }
 
 
+        .choice-medallion::after {
+            content: "";
+
+            position: absolute;
+            inset: -9px;
+
+            border-radius: 50%;
+
+            border:
+                1px solid
+                rgba(155,106,40,.13);
+        }
+
+
         .opening-half:hover
-        .large-initial {
+        .choice-medallion {
             transform:
-                translateY(-4px)
-                rotate(-3deg);
+                translateY(-6px)
+                rotate(-4deg)
+                scale(1.04);
 
             box-shadow:
-                0 0 0 9px
-                rgba(167,122,52,.07);
+                0 0 0 10px
+                rgba(155,106,40,.05),
+
+                0 10px 25px
+                rgba(81,49,21,.09);
         }
 
 
@@ -1204,7 +1552,7 @@
             margin:
                 0
                 0
-                12px;
+                11px;
 
             font-size: 1.7rem;
             font-weight: normal;
@@ -1212,16 +1560,17 @@
 
 
         .opening-half p {
-            max-width: 350px;
+            max-width: 355px;
+
+            min-height: 93px;
 
             margin:
-                0
-                auto
+                0 auto
                 24px;
 
-            min-height: 92px;
+            color:
+                var(--ink-soft);
 
-            color: var(--ink-soft);
             line-height: 1.62;
         }
 
@@ -1233,7 +1582,7 @@
         .primary,
         .secondary,
         .danger {
-            min-height: 58px;
+            min-height: 59px;
 
             padding:
                 13px
@@ -1242,18 +1591,18 @@
             border-radius: 999px;
 
             transition:
-                transform .18s ease,
-                box-shadow .18s ease,
-                background .18s ease;
+                transform .2s ease,
+                box-shadow .2s ease,
+                filter .2s ease;
         }
 
 
         .primary {
-            color: #fff8ed;
+            color: #fff5e5;
 
             border:
                 1px solid
-                rgba(70,31,30,.94);
+                rgba(60,25,27,.95);
 
             background:
                 linear-gradient(
@@ -1263,17 +1612,21 @@
                 );
 
             box-shadow:
-                0 10px 22px
-                rgba(71,32,31,.20);
+                0 10px 23px
+                rgba(71,31,32,.21);
         }
 
 
         .primary:hover {
-            transform: translateY(-2px);
+            transform:
+                translateY(-2px);
+
+            filter:
+                brightness(1.06);
 
             box-shadow:
-                0 14px 29px
-                rgba(71,32,31,.28);
+                0 15px 30px
+                rgba(71,31,32,.29);
         }
 
 
@@ -1282,23 +1635,24 @@
 
             border:
                 1px solid
-                rgba(167,122,52,.62);
+                rgba(155,106,40,.6);
 
             background:
                 linear-gradient(
                     180deg,
-                    rgba(255,253,247,.65),
-                    rgba(226,205,165,.20)
+                    rgba(255,253,245,.72),
+                    rgba(220,190,137,.18)
                 );
         }
 
 
         .secondary:hover {
-            transform: translateY(-2px);
+            transform:
+                translateY(-2px);
 
             box-shadow:
-                0 10px 22px
-                rgba(89,59,29,.10);
+                0 11px 24px
+                rgba(80,49,22,.10);
         }
 
 
@@ -1307,45 +1661,37 @@
 
             border:
                 1px solid
-                rgba(109,53,52,.42);
+                rgba(109,51,52,.4);
 
-            background: transparent;
-        }
-
-
-        .danger:hover {
             background:
-                rgba(109,53,52,.06);
+                rgba(255,255,255,.12);
         }
 
 
         .text-button {
             padding:
                 9px
-                13px;
+                14px;
 
             border: none;
-            background: transparent;
+            background: none;
 
-            color: var(--ink-soft);
-
-            font-size: .91rem;
+            color:
+                var(--ink-soft);
 
             text-decoration: underline;
-            text-decoration-color:
-                rgba(118,100,84,.4);
 
             text-underline-offset: 5px;
-        }
 
+            text-decoration-color:
+                rgba(114,95,75,.4);
 
-        .text-button:hover {
-            color: var(--wine);
+            font-size: .91rem;
         }
 
 
         /* =========================================================
-           FRAGE / AUFNAHME
+           STORY
         ========================================================= */
 
         #storyView {
@@ -1357,12 +1703,13 @@
             position: relative;
 
             max-width: 900px;
+
             margin: 0 auto;
 
             padding:
-                36px
-                25px
-                25px;
+                38px
+                23px
+                24px;
 
             border-top:
                 1px solid var(--line);
@@ -1380,60 +1727,72 @@
             top: -17px;
             left: 50%;
 
-            transform: translateX(-50%);
+            transform:
+                translateX(-50%);
 
-            padding: 0 15px;
+            padding:
+                0 15px;
 
-            color: var(--brass-light);
+            color:
+                var(--gold-mid);
 
-            background: #f9efd9;
+            background:
+                #f7e9cc;
 
-            font-size: 1.4rem;
+            font-size: 1.55rem;
+
+            animation:
+                ornamentGlow
+                4s
+                ease-in-out
+                infinite;
         }
 
 
         .question-intro {
             text-align: center;
 
-            color: var(--brass);
+            color:
+                var(--gold);
 
             font-family:
                 Arial,
                 Helvetica,
                 sans-serif;
 
-            font-size: .62rem;
-            letter-spacing: .22em;
+            font-size: .61rem;
+
+            letter-spacing: .23em;
+
             text-transform: uppercase;
         }
 
 
         #question {
-            max-width: 780px;
+            max-width: 790px;
 
             margin:
-                18px
+                19px
                 auto
-                8px;
+                9px;
 
             text-align: center;
 
             font-size:
                 clamp(
-                    1.95rem,
+                    2rem,
                     4.6vw,
-                    3rem
+                    3.05rem
                 );
 
-            font-style: italic;
             line-height: 1.34;
+
+            font-style: italic;
         }
 
 
         .free-title {
-            margin:
-                0
-                auto;
+            margin: 0;
 
             text-align: center;
 
@@ -1441,7 +1800,7 @@
                 clamp(
                     2rem,
                     4vw,
-                    2.85rem
+                    2.9rem
                 );
 
             font-weight: normal;
@@ -1456,81 +1815,97 @@
                 auto
                 0;
 
-            color: var(--ink-soft);
-
             text-align: center;
-            line-height: 1.68;
+
+            color:
+                var(--ink-soft);
+
+            line-height: 1.7;
         }
 
 
         /* =========================================================
-           MESSING-MIKROFON
+           MIKROFON
         ========================================================= */
 
         .record-zone {
-            text-align: center;
-
             padding:
-                38px
+                39px
                 0
-                5px;
+                4px;
+
+            text-align: center;
         }
 
 
         .record-stage {
             position: relative;
 
-            width: 230px;
-            height: 230px;
+            width: 245px;
+            height: 245px;
 
             margin: 0 auto;
         }
 
 
-        .brass-ring {
+        .halo {
             position: absolute;
-
-            inset: 11px;
 
             border-radius: 50%;
 
             border:
                 1px solid
-                rgba(167,122,52,.48);
-
-            box-shadow:
-                inset 0 0 15px rgba(167,122,52,.10),
-                0 0 20px rgba(167,122,52,.08);
+                rgba(155,106,40,.31);
 
             animation:
-                brassBreath
-                4s
+                haloBreath
+                4.4s
                 ease-in-out
                 infinite;
         }
 
 
-        .brass-ring.two {
-            inset: 27px;
-
-            border-color:
-                rgba(167,122,52,.20);
-
-            animation-delay:
-                -1.4s;
+        .halo.one {
+            inset: 6px;
         }
 
 
-        @keyframes brassBreath {
+        .halo.two {
+            inset: 23px;
+
+            animation-delay:
+                -1.3s;
+
+            border-color:
+                rgba(155,106,40,.18);
+        }
+
+
+        .halo.three {
+            inset: 40px;
+
+            animation-delay:
+                -2.4s;
+
+            border-color:
+                rgba(155,106,40,.12);
+        }
+
+
+        @keyframes haloBreath {
             0%,
             100% {
-                transform: scale(.97);
-                opacity: .48;
+                transform:
+                    scale(.95);
+
+                opacity: .32;
             }
 
             50% {
-                transform: scale(1.035);
-                opacity: 1;
+                transform:
+                    scale(1.04);
+
+                opacity: .9;
             }
         }
 
@@ -1541,116 +1916,123 @@
             left: 50%;
             top: 50%;
 
-            width: 160px;
-            height: 160px;
+            width: 164px;
+            height: 164px;
 
             transform:
                 translate(-50%, -50%);
 
+            z-index: 4;
+
             border-radius: 50%;
 
-            color: #fff8e8;
+            color:
+                #fff8e5;
 
             border:
                 2px solid
-                #6e4d22;
+                #684516;
 
             background:
                 radial-gradient(
-                    circle at 34% 25%,
-                    #e6c980,
-                    #af813b 38%,
-                    #76501f 70%,
-                    #412a11 100%
+                    circle at 31% 23%,
+                    #f1db9d,
+                    #c69a4c 31%,
+                    #8e6024 62%,
+                    #4d3111 100%
                 );
 
             box-shadow:
-                0 18px 34px
-                rgba(52,31,12,.32),
+                0 20px 40px
+                rgba(53,31,9,.35),
 
                 inset
-                0 2px 2px
-                rgba(255,244,194,.75),
+                0 2px
+                3px
+                rgba(255,245,201,.85),
 
                 inset
-                0 -9px 17px
-                rgba(50,28,8,.34),
+                0 -12px
+                20px
+                rgba(55,31,8,.34),
 
                 0 0 0 5px
-                rgba(255,246,214,.18);
-
-            z-index: 3;
+                rgba(255,241,199,.14);
 
             transition:
-                transform .18s ease,
-                filter .18s ease;
+                transform .2s ease,
+                filter .2s ease;
+        }
+
+
+        #recordButton::before {
+            content: "";
+
+            position: absolute;
+
+            inset: 8px;
+
+            border-radius: 50%;
+
+            border:
+                1px solid
+                rgba(255,231,170,.34);
         }
 
 
         #recordButton:hover {
             transform:
                 translate(-50%, -50%)
-                scale(1.035);
+                scale(1.04);
 
             filter:
-                brightness(1.06);
+                brightness(1.07);
         }
 
 
         #recordButton.recording {
+            border-color:
+                #4e211f;
+
             background:
                 radial-gradient(
-                    circle at 34% 25%,
-                    #b8736c,
-                    #783c39 45%,
-                    #441e1d 100%
+                    circle at 31% 23%,
+                    #c88077,
+                    #7f3d3b 44%,
+                    #451c1d 100%
                 );
-
-            border-color:
-                #502421;
         }
 
 
-        #recordButton.recording
-        ~ .record-wave {
-            opacity: 1;
-        }
-
-
-        #recordButton.recording::before,
         #recordButton.recording::after {
             content: "";
 
             position: absolute;
-            inset: -20px;
+
+            inset: -29px;
 
             border-radius: 50%;
 
             border:
                 2px solid
-                rgba(109,53,52,.42);
+                rgba(109,51,52,.5);
 
             animation:
-                recordingPulse
-                1.7s
+                recordWave
+                1.55s
                 ease-out
                 infinite;
         }
 
 
-        #recordButton.recording::after {
-            animation-delay: .55s;
-        }
-
-
-        @keyframes recordingPulse {
-            from {
-                transform: scale(.86);
-                opacity: .9;
+        @keyframes recordWave {
+            0% {
+                transform: scale(.8);
+                opacity: .85;
             }
 
-            to {
-                transform: scale(1.28);
+            100% {
+                transform: scale(1.35);
                 opacity: 0;
             }
         }
@@ -1681,34 +2063,34 @@
                 Helvetica,
                 sans-serif;
 
-            font-size: .84rem;
             font-weight: bold;
+            font-size: .84rem;
+
             letter-spacing: .04em;
         }
 
 
         #recordingFeedback {
             display: none;
-
-            margin-top: 0;
         }
 
 
         .listening {
-            color: var(--wine);
+            color:
+                var(--wine);
 
-            font-size: 1.2rem;
+            font-size: 1.22rem;
             font-style: italic;
 
             animation:
-                listenGlow
+                listenPulse
                 1.8s
                 ease-in-out
                 infinite;
         }
 
 
-        @keyframes listenGlow {
+        @keyframes listenPulse {
             0%,
             100% {
                 opacity: .55;
@@ -1723,7 +2105,8 @@
         #recordingTime {
             margin-top: 7px;
 
-            color: var(--ink-soft);
+            color:
+                var(--ink-soft);
 
             font-family:
                 Arial,
@@ -1731,9 +2114,6 @@
                 sans-serif;
 
             font-size: .84rem;
-
-            font-variant-numeric:
-                tabular-nums;
         }
 
 
@@ -1743,10 +2123,10 @@
             width:
                 min(
                     100%,
-                    570px
+                    590px
                 );
 
-            height: 88px;
+            height: 92px;
 
             margin:
                 13px
@@ -1757,42 +2137,43 @@
 
         .text-actions {
             display: flex;
-            flex-wrap: wrap;
             justify-content: center;
-            gap: 2px;
+            flex-wrap: wrap;
 
             margin-top: 13px;
         }
 
 
         #status {
-            min-height: 28px;
+            min-height: 29px;
 
             margin-top: 15px;
 
             text-align: center;
-            color: var(--ink-soft);
+
+            color:
+                var(--ink-soft);
 
             font-style: italic;
         }
 
 
         /* =========================================================
-           VERARBEITUNG
+           PROCESSING
         ========================================================= */
 
         #processingBox {
             display: none;
 
-            max-width: 690px;
+            max-width: 700px;
 
             margin:
                 47px
                 auto;
 
             padding:
-                43px
-                24px;
+                44px
+                22px;
 
             text-align: center;
 
@@ -1804,31 +2185,21 @@
         }
 
 
-        #processingBox h2 {
-            margin:
-                9px
-                0
-                15px;
-
-            font-size: 1.8rem;
-            font-weight: normal;
-        }
-
-
         .quill {
-            width: 58px;
-            height: 58px;
+            width: 65px;
+            height: 65px;
 
             margin:
-                6px
+                5px
                 auto
-                17px;
+                12px;
 
-            color: var(--brass);
+            color:
+                var(--gold);
 
             animation:
                 quillWrite
-                2s
+                1.9s
                 ease-in-out
                 infinite;
         }
@@ -1838,51 +2209,61 @@
             0%,
             100% {
                 transform:
-                    translateX(-5px)
-                    rotate(-7deg);
+                    translateX(-7px)
+                    rotate(-9deg);
             }
 
             50% {
                 transform:
-                    translateX(7px)
-                    rotate(3deg);
+                    translateX(8px)
+                    rotate(4deg);
             }
         }
 
 
-        .processing-line {
-            width: 190px;
+        #processingBox h2 {
+            margin:
+                8px
+                0;
+
+            font-weight: normal;
+            font-size: 1.85rem;
+        }
+
+
+        .ink-line {
+            width: 215px;
             height: 1px;
 
             margin:
-                19px
+                21px
                 auto;
 
             overflow: hidden;
 
             background:
-                rgba(167,122,52,.17);
+                rgba(155,106,40,.14);
         }
 
 
-        .processing-line::after {
+        .ink-line::after {
             content: "";
 
             display: block;
 
-            width: 78px;
+            width: 85px;
             height: 100%;
 
             background:
                 linear-gradient(
                     90deg,
                     transparent,
-                    var(--brass-light),
+                    var(--gold-light),
                     transparent
                 );
 
             animation:
-                lineTravel
+                lightTravel
                 1.4s
                 ease-in-out
                 infinite;
@@ -1890,7 +2271,7 @@
 
 
         /* =========================================================
-           TRANSKRIPT / ZUSAMMENFASSUNG
+           REVIEW
         ========================================================= */
 
         #reviewArea,
@@ -1903,26 +2284,25 @@
             text-align: center;
 
             margin:
-                47px
+                49px
                 0
-                17px;
+                18px;
         }
 
 
         .section-heading small {
-            display: block;
-
-            color: var(--brass);
+            color:
+                var(--gold);
 
             font-family:
                 Arial,
                 Helvetica,
                 sans-serif;
 
-            text-transform: uppercase;
-            letter-spacing: .2em;
-
             font-size: .59rem;
+            letter-spacing: .21em;
+
+            text-transform: uppercase;
         }
 
 
@@ -1932,22 +2312,22 @@
                 0
                 0;
 
-            font-size: 2rem;
+            font-size: 2.05rem;
             font-weight: normal;
         }
 
 
         #transcript {
-            max-width: 820px;
+            max-width: 830px;
 
             margin: 0 auto;
 
             padding:
-                27px
-                38px;
+                29px
+                40px;
 
-            font-size: 1.18rem;
-            line-height: 1.88;
+            font-size: 1.19rem;
+            line-height: 1.9;
             white-space: pre-wrap;
 
             border-top:
@@ -1959,7 +2339,7 @@
             background:
                 linear-gradient(
                     180deg,
-                    rgba(255,255,255,.25),
+                    rgba(255,255,255,.24),
                     transparent
                 );
         }
@@ -1969,62 +2349,74 @@
             float: left;
 
             padding:
-                11px
+                12px
                 11px
                 0
                 0;
 
-            color: var(--wine);
+            color:
+                var(--wine);
 
-            font-size: 4.7rem;
-            line-height: .67;
+            font-size: 4.8rem;
+            line-height: .66;
+
+            text-shadow:
+                1px 1px
+                rgba(255,255,255,.45);
         }
 
 
         #summary {
             position: relative;
 
-            max-width: 700px;
+            max-width: 710px;
 
             margin:
-                22px
+                23px
                 auto
                 0;
 
             padding:
-                28px
-                36px;
+                30px
+                37px;
 
-            color: #594838;
-            line-height: 1.69;
+            line-height: 1.7;
+
+            color:
+                #594635;
 
             background:
                 linear-gradient(
                     145deg,
-                    rgba(225,198,145,.42),
-                    rgba(255,250,235,.58)
+                    rgba(230,201,145,.46),
+                    rgba(255,250,234,.6)
                 );
 
             border-left:
-                4px solid var(--brass);
+                4px solid
+                var(--gold);
 
             box-shadow:
-                var(--page-shadow);
+                0 15px 35px
+                rgba(62,40,21,.11);
 
-            transform: rotate(-.18deg);
+            transform:
+                rotate(-.2deg);
         }
 
 
         #summary::before {
-            content: "✦";
+            content: "❦";
 
             position: absolute;
 
             right: 16px;
-            top: 12px;
+            top: 10px;
 
             color:
-                rgba(167,122,52,.45);
+                rgba(155,106,40,.38);
+
+            font-size: 1.4rem;
         }
 
 
@@ -2032,11 +2424,11 @@
             max-width: 770px;
 
             margin:
-                47px
+                48px
                 auto
                 0;
 
-            padding-top: 31px;
+            padding-top: 32px;
 
             text-align: center;
 
@@ -2051,7 +2443,7 @@
                 0
                 23px;
 
-            font-size: 1.48rem;
+            font-size: 1.5rem;
             font-weight: normal;
         }
 
@@ -2065,58 +2457,65 @@
 
 
         /* =========================================================
-           SPEICHERN / SIEGEL
+           SAVE SEAL
         ========================================================= */
 
         #savedMessage {
             display: none;
 
-            position: relative;
-
             max-width: 720px;
 
             margin:
-                43px
+                44px
                 auto
-                31px;
+                30px;
 
             padding:
-                27px
+                29px
                 30px;
 
             text-align: center;
 
-            color: var(--forest);
+            color:
+                var(--green);
 
             border-top:
                 1px solid
-                rgba(61,81,68,.28);
+                rgba(61,80,67,.27);
 
             border-bottom:
                 1px solid
-                rgba(61,81,68,.28);
+                rgba(61,80,67,.27);
 
             animation:
-                sealDrop
-                .75s
-                cubic-bezier(.2,.8,.2,1)
+                stampIn
+                .72s
+                cubic-bezier(.13,.83,.2,1)
                 both;
         }
 
 
-        @keyframes sealDrop {
-            from {
+        @keyframes stampIn {
+            0% {
                 opacity: 0;
+
                 transform:
-                    scale(1.08)
-                    translateY(-7px);
+                    scale(1.22)
+                    rotate(-8deg);
             }
 
-            to {
+            55% {
                 opacity: 1;
+
+                transform:
+                    scale(.96)
+                    rotate(-3deg);
+            }
+
+            100% {
                 transform:
                     scale(1)
-                    translateY(0);
+                    rotate(0);
             }
         }
 
@@ -2126,37 +2525,39 @@
 
             display: inline-flex;
 
-            align-items: center;
-            justify-content: center;
-
-            width: 38px;
-            height: 38px;
+            width: 42px;
+            height: 42px;
 
             margin-right: 11px;
 
-            color: #744039;
-
-            border:
-                2px solid
-                rgba(116,64,57,.65);
+            align-items: center;
+            justify-content: center;
 
             border-radius: 50%;
 
-            font-size: 1.1rem;
+            border:
+                2px solid
+                rgba(109,51,52,.65);
+
+            color:
+                var(--wine);
+
+            font-size: 1.2rem;
             font-style: italic;
 
-            box-shadow:
-                inset 0 0 0 3px
-                rgba(116,64,57,.08);
+            transform:
+                rotate(-8deg);
 
-            transform: rotate(-8deg);
+            box-shadow:
+                inset 0 0 0 4px
+                rgba(109,51,52,.06);
         }
 
 
         .special-box {
             position: relative;
 
-            max-width: 730px;
+            max-width: 740px;
 
             margin:
                 34px
@@ -2164,23 +2565,23 @@
                 0;
 
             padding:
-                36px
-                38px;
+                37px
+                40px;
 
             background:
                 linear-gradient(
                     145deg,
-                    rgba(239,222,187,.62),
-                    rgba(255,251,240,.52)
+                    rgba(238,217,176,.68),
+                    rgba(255,250,236,.55)
                 );
 
             border:
                 1px solid
-                rgba(129,91,45,.25);
+                rgba(128,86,36,.25);
 
             box-shadow:
-                0 12px 30px
-                rgba(64,42,23,.07);
+                0 13px 33px
+                rgba(62,40,21,.07);
         }
 
 
@@ -2190,11 +2591,11 @@
             position: absolute;
             inset: 8px;
 
+            pointer-events: none;
+
             border:
                 1px solid
-                rgba(167,122,52,.10);
-
-            pointer-events: none;
+                rgba(155,106,40,.11);
         }
 
 
@@ -2202,14 +2603,9 @@
             position: relative;
             z-index: 2;
 
-            margin:
-                8px
-                0
-                15px;
-
             text-align: center;
 
-            font-size: 1.52rem;
+            font-size: 1.53rem;
             font-weight: normal;
         }
 
@@ -2223,7 +2619,7 @@
             position: relative;
             z-index: 2;
 
-            max-width: 640px;
+            max-width: 650px;
 
             margin:
                 18px
@@ -2232,23 +2628,24 @@
 
             text-align: center;
 
-            font-size: 1.48rem;
+            font-size: 1.5rem;
             font-style: italic;
-            line-height: 1.55;
+
+            line-height: 1.56;
         }
 
 
         /* =========================================================
-           ERINNERUNGEN
+           ARCHIVE
         ========================================================= */
 
         .archive-toolbar {
-            max-width: 680px;
+            max-width: 690px;
 
             margin:
-                28px
+                27px
                 auto
-                37px;
+                38px;
         }
 
 
@@ -2259,25 +2656,22 @@
                 15px
                 22px;
 
+            color:
+                var(--ink);
+
             border:
-                1px solid
-                var(--line);
+                1px solid var(--line);
 
             border-radius: 999px;
 
-            color: var(--ink);
-
             background:
-                rgba(255,253,246,.58);
-
-            box-shadow:
-                inset 0 1px 5px
-                rgba(63,42,22,.04);
+                rgba(255,252,244,.62);
         }
 
 
         #archiveList {
-            max-width: 830px;
+            max-width: 840px;
+
             margin: 0 auto;
         }
 
@@ -2286,15 +2680,14 @@
             position: relative;
 
             padding:
-                27px
-                43px
-                29px;
-
-            border-top:
-                1px solid
-                var(--line);
+                28px
+                45px
+                30px;
 
             cursor: pointer;
+
+            border-top:
+                1px solid var(--line);
 
             transition:
                 transform .25s ease,
@@ -2304,25 +2697,22 @@
 
         .memory-card:last-child {
             border-bottom:
-                1px solid
-                var(--line);
+                1px solid var(--line);
         }
 
 
         .memory-card::before {
-            content: "";
+            content: "◆";
 
             position: absolute;
 
-            left: 16px;
-            top: 36px;
+            left: 14px;
+            top: 33px;
 
-            width: 8px;
-            height: 8px;
+            color:
+                var(--gold-mid);
 
-            transform: rotate(45deg);
-
-            background: var(--brass);
+            font-size: .55rem;
         }
 
 
@@ -2333,7 +2723,7 @@
             background:
                 linear-gradient(
                     90deg,
-                    rgba(255,250,237,.72),
+                    rgba(255,248,230,.72),
                     transparent
                 );
         }
@@ -2342,7 +2732,8 @@
         .memory-meta {
             margin-bottom: 8px;
 
-            color: var(--brass);
+            color:
+                var(--gold);
 
             font-family:
                 Arial,
@@ -2351,6 +2742,7 @@
 
             font-size: .61rem;
             letter-spacing: .14em;
+
             text-transform: uppercase;
         }
 
@@ -2358,13 +2750,15 @@
         .memory-title {
             margin-bottom: 8px;
 
-            font-size: 1.44rem;
+            font-size: 1.45rem;
             line-height: 1.36;
         }
 
 
         .memory-summary {
-            color: var(--ink-soft);
+            color:
+                var(--ink-soft);
+
             line-height: 1.58;
         }
 
@@ -2378,13 +2772,7 @@
                 5px
                 10px;
 
-            color: #715221;
-
-            border:
-                1px solid
-                rgba(167,122,52,.36);
-
-            border-radius: 999px;
+            color: #715020;
 
             font-family:
                 Arial,
@@ -2392,17 +2780,23 @@
                 sans-serif;
 
             font-size: .69rem;
+
+            border:
+                1px solid
+                rgba(155,106,40,.35);
+
+            border-radius: 999px;
         }
 
 
         /* =========================================================
-           ZEITREISE
+           TIMELINE
         ========================================================= */
 
         #timelineList {
             position: relative;
 
-            max-width: 820px;
+            max-width: 840px;
 
             margin:
                 43px
@@ -2416,7 +2810,7 @@
 
             position: absolute;
 
-            left: 105px;
+            left: 108px;
 
             top: 10px;
             bottom: 10px;
@@ -2425,8 +2819,8 @@
 
             background:
                 linear-gradient(
-                    var(--brass),
-                    rgba(167,122,52,.08)
+                    var(--gold-mid),
+                    rgba(155,106,40,.08)
                 );
         }
 
@@ -2435,31 +2829,29 @@
             display: grid;
 
             grid-template-columns:
-                80px
-                50px
-                minmax(0,1fr);
+                82px
+                52px
+                1fr;
 
             opacity: 0;
 
             animation:
-                timelineReveal
+                timelineIn
                 .65s
                 ease
                 forwards;
         }
 
 
-        @keyframes timelineReveal {
+        @keyframes timelineIn {
             from {
                 opacity: 0;
-
                 transform:
                     translateY(16px);
             }
 
             to {
                 opacity: 1;
-
                 transform:
                     translateY(0);
             }
@@ -2471,7 +2863,8 @@
 
             text-align: right;
 
-            color: var(--wine);
+            color:
+                var(--wine);
 
             font-size: 1.32rem;
         }
@@ -2486,28 +2879,32 @@
 
 
         .timeline-dot {
+            width: 16px;
+            height: 16px;
+
             position: relative;
+
             z-index: 2;
 
-            width: 15px;
-            height: 15px;
-
             border-radius: 50%;
+
+            border:
+                3px solid
+                #f4e3c3;
 
             background:
                 radial-gradient(
                     circle at 35% 30%,
-                    var(--brass-light),
-                    var(--brass)
+                    var(--gold-light),
+                    var(--gold)
                 );
-
-            border:
-                3px solid
-                #f6ead3;
 
             box-shadow:
                 0 0 0 1px
-                var(--brass);
+                var(--gold-mid),
+
+                0 0 12px
+                rgba(155,106,40,.15);
         }
 
 
@@ -2515,7 +2912,7 @@
             padding:
                 1px
                 10px
-                31px;
+                32px;
 
             cursor: pointer;
 
@@ -2536,7 +2933,7 @@
                 0
                 7px;
 
-            font-size: 1.4rem;
+            font-size: 1.41rem;
             font-weight: normal;
         }
 
@@ -2544,71 +2941,73 @@
         .timeline-memory p {
             margin: 0;
 
-            color: var(--ink-soft);
-            line-height: 1.55;
+            color:
+                var(--ink-soft);
+
+            line-height: 1.56;
         }
 
 
         .unknown-section {
-            max-width: 820px;
+            max-width: 830px;
 
             margin:
-                52px
+                53px
                 auto
                 0;
 
             padding-top: 29px;
 
             border-top:
-                1px solid
-                var(--line);
+                1px solid var(--line);
         }
 
 
         .unknown-section h3 {
             text-align: center;
-            font-size: 1.5rem;
             font-weight: normal;
+            font-size: 1.5rem;
         }
 
 
         /* =========================================================
-           ERINNERUNG ALS BUCHSEITE
+           MEMORY DIALOG
         ========================================================= */
 
         #memoryDialog {
             display: none;
 
             position: fixed;
-            z-index: 500;
 
             inset: 0;
+
+            z-index: 500;
 
             overflow-y: auto;
 
             padding:
-                42px
+                43px
                 18px;
 
             background:
-                rgba(21,14,11,.82);
+                rgba(16,10,8,.84);
 
             backdrop-filter:
-                blur(7px);
+                blur(8px);
         }
 
 
         .dialog-page {
             position: relative;
 
-            max-width: 820px;
+            max-width: 840px;
 
             margin: 0 auto;
 
             padding:
-                58px
-                62px
-                55px;
+                61px
+                64px
+                57px;
 
             background:
                 repeating-linear-gradient(
@@ -2618,42 +3017,42 @@
                     transparent 1px,
                     transparent 4px
                 ),
-                var(--paper-1);
+                var(--paper-light);
 
             border:
                 1px solid
-                rgba(167,122,52,.42);
+                rgba(155,106,40,.43);
 
             box-shadow:
-                0 32px 110px
-                rgba(0,0,0,.55);
+                0 35px 120px
+                rgba(0,0,0,.6);
 
             animation:
-                memoryOpen
-                .6s
-                cubic-bezier(.16,.78,.2,1)
+                memoryPage
+                .62s
+                cubic-bezier(.16,.8,.2,1)
                 both;
         }
 
 
-        @keyframes memoryOpen {
+        @keyframes memoryPage {
             from {
                 opacity: 0;
 
                 transform:
-                    perspective(1200px)
-                    rotateY(-5deg)
-                    translateY(20px)
-                    scale(.985);
+                    perspective(1300px)
+                    rotateY(-6deg)
+                    translateX(22px)
+                    scale(.98);
             }
 
             to {
                 opacity: 1;
 
                 transform:
-                    perspective(1200px)
+                    perspective(1300px)
                     rotateY(0)
-                    translateY(0)
+                    translateX(0)
                     scale(1);
             }
         }
@@ -2669,30 +3068,32 @@
 
             border:
                 1px solid
-                rgba(167,122,52,.18);
+                rgba(155,106,40,.18);
         }
 
 
         .dialog-close {
             position: absolute;
+
+            top: 18px;
+            right: 21px;
+
             z-index: 5;
 
-            right: 21px;
-            top: 18px;
-
-            width: 40px;
-            height: 40px;
+            width: 41px;
+            height: 41px;
 
             border-radius: 50%;
 
+            color:
+                var(--ink-soft);
+
             border:
                 1px solid
-                rgba(118,100,84,.28);
-
-            color: var(--ink-soft);
+                rgba(114,95,75,.26);
 
             background:
-                rgba(255,255,255,.36);
+                rgba(255,255,255,.4);
 
             font-family:
                 Arial,
@@ -2714,16 +3115,17 @@
                 clamp(
                     2rem,
                     4vw,
-                    2.95rem
+                    3rem
                 );
 
-            line-height: 1.2;
             font-weight: normal;
+            line-height: 1.2;
         }
 
 
         #dialogTime {
-            color: var(--brass);
+            color:
+                var(--gold);
 
             font-style: italic;
         }
@@ -2731,48 +3133,48 @@
 
         #dialogSummary {
             margin:
-                26px
+                27px
                 0
                 29px;
 
             padding:
-                19px
+                20px
                 0;
 
-            color: var(--ink-soft);
+            color:
+                var(--ink-soft);
 
             font-style: italic;
-            line-height: 1.65;
+            line-height: 1.66;
 
             border-top:
-                1px solid
-                var(--line);
+                1px solid var(--line);
 
             border-bottom:
-                1px solid
-                var(--line);
+                1px solid var(--line);
         }
 
 
         #dialogTranscript {
-            line-height: 1.86;
+            line-height: 1.88;
+
             white-space: pre-wrap;
         }
 
 
         .timeline-editor {
-            margin-top: 38px;
+            margin-top: 39px;
+
             padding-top: 28px;
 
             border-top:
-                1px solid
-                var(--line);
+                1px solid var(--line);
         }
 
 
         .timeline-editor h3 {
-            font-weight: normal;
             font-size: 1.45rem;
+            font-weight: normal;
         }
 
 
@@ -2784,7 +3186,8 @@
                 0
                 7px;
 
-            color: var(--ink-soft);
+            color:
+                var(--ink-soft);
 
             font-family:
                 Arial,
@@ -2803,14 +3206,14 @@
                 13px
                 14px;
 
+            color:
+                var(--ink);
+
             border:
-                1px solid
-                var(--line);
+                1px solid var(--line);
 
             background:
-                rgba(255,255,255,.62);
-
-            color: var(--ink);
+                rgba(255,255,255,.65);
         }
 
 
@@ -2824,11 +3227,12 @@
         ========================================================= */
 
         .footer {
-            margin-top: 56px;
+            margin-top: 58px;
 
             text-align: center;
 
-            color: var(--ink-faint);
+            color:
+                var(--ink-faint);
 
             font-family:
                 Arial,
@@ -2841,38 +3245,46 @@
 
         .footer button {
             border: none;
-            background: transparent;
 
-            color: var(--ink-faint);
+            background: none;
+
+            color:
+                var(--ink-faint);
 
             text-decoration: underline;
+
             text-underline-offset: 4px;
         }
 
 
         /* =========================================================
-           MOBILE / TABLET
+           MOBILE
         ========================================================= */
 
         @media (
-            max-width: 820px
+            max-width: 840px
         ) {
+
+            html {
+                font-size: 17px;
+            }
+
 
             .desk {
                 padding:
-                    10px
-                    6px
+                    8px
+                    5px
                     45px;
             }
 
 
             .open-book {
                 padding:
-                    42px
+                    44px
                     25px
-                    40px;
+                    41px;
 
-                border-radius: 10px;
+                border-radius: 11px;
 
                 background:
                     repeating-linear-gradient(
@@ -2882,18 +3294,36 @@
                         transparent 1px,
                         transparent 4px
                     ),
-                    var(--paper-2);
+                    var(--paper);
             }
 
 
-            .open-book::before {
+            .open-book::before,
+            .spine-thread {
                 display: none;
+            }
+
+
+            .book-corner {
+                width: 65px;
+                height: 65px;
+            }
+
+
+            .roman-seal {
+                top: 28px;
+                right: 24px;
+
+                width: 45px;
+                height: 45px;
+
+                font-size: 1.15rem;
             }
 
 
             .opening-spread {
                 grid-template-columns: 1fr;
-                gap: 10px;
+                gap: 12px;
             }
 
 
@@ -2901,16 +3331,18 @@
                 min-height: auto;
 
                 padding:
-                    25px
-                    10px
-                    32px;
+                    26px
+                    9px
+                    33px;
             }
 
 
             .opening-half:first-child::after {
                 top: auto;
+
                 left: 13%;
                 right: 13%;
+
                 bottom: 0;
 
                 width: auto;
@@ -2920,7 +3352,7 @@
                     linear-gradient(
                         90deg,
                         transparent,
-                        rgba(129,91,45,.25),
+                        rgba(155,106,40,.26),
                         transparent
                     );
             }
@@ -2932,45 +3364,46 @@
 
 
             .chapter-nav {
-                gap: 2px;
+                gap: 1px;
             }
 
 
             .chapter-nav button {
                 min-width: 0;
+
                 flex: 1;
 
                 padding:
                     11px
-                    8px;
+                    7px;
 
-                font-size: .76rem;
+                font-size: .75rem;
             }
 
 
             .story-sheet {
                 padding:
-                    35px
+                    36px
                     2px
-                    20px;
+                    21px;
             }
 
 
             .record-stage {
-                width: 205px;
-                height: 205px;
+                width: 215px;
+                height: 215px;
             }
 
 
             #recordButton {
-                width: 148px;
-                height: 148px;
+                width: 150px;
+                height: 150px;
             }
 
 
             #transcript {
                 padding:
-                    24px
+                    25px
                     7px;
             }
 
@@ -2983,6 +3416,7 @@
 
             .button-row {
                 display: grid;
+
                 grid-template-columns: 1fr;
             }
 
@@ -3001,7 +3435,7 @@
                 grid-template-columns:
                     52px
                     35px
-                    minmax(0,1fr);
+                    1fr;
             }
 
 
@@ -3012,18 +3446,17 @@
 
             .dialog-page {
                 padding:
-                    49px
+                    50px
                     24px
-                    40px;
+                    41px;
             }
 
 
-            .book-cover {
+            .cover {
                 padding:
-                    52px
+                    55px
                     31px;
             }
-
         }
 
 
@@ -3047,7 +3480,6 @@
                 scroll-behavior:
                     auto !important;
             }
-
         }
 
     </style>
@@ -3057,20 +3489,42 @@
 <body>
 
 
+<!-- Goldstaub -->
+
+<div class="dust" aria-hidden="true">
+
+    <span style="left:7%; --duration:19s; --delay:-3s;"></span>
+    <span style="left:13%; --duration:24s; --delay:-13s;"></span>
+    <span style="left:21%; --duration:21s; --delay:-6s;"></span>
+    <span style="left:31%; --duration:27s; --delay:-18s;"></span>
+    <span style="left:42%; --duration:22s; --delay:-10s;"></span>
+    <span style="left:56%; --duration:26s; --delay:-16s;"></span>
+    <span style="left:66%; --duration:20s; --delay:-4s;"></span>
+    <span style="left:73%; --duration:28s; --delay:-21s;"></span>
+    <span style="left:84%; --duration:23s; --delay:-8s;"></span>
+    <span style="left:93%; --duration:25s; --delay:-14s;"></span>
+
+</div>
+
+
 <!-- =========================================================
-     START / SESSION PRÜFEN
+     START
 ========================================================= -->
 
 <div id="startupView">
 
-    <div class="startup-inner">
+    <div class="startup-box">
 
-        <div class="startup-mark">
-            ❦
+        <div class="startup-seal">
+            R
         </div>
 
         <div class="startup-title">
             Romans Erinnerungen
+        </div>
+
+        <div class="startup-sub">
+            Ein Leben voller Geschichten
         </div>
 
         <div class="startup-line"></div>
@@ -3086,7 +3540,12 @@
 
 <div id="loginView">
 
-    <section class="book-cover">
+    <section class="cover">
+
+        <div class="corner tl"></div>
+        <div class="corner tr"></div>
+        <div class="corner bl"></div>
+        <div class="corner br"></div>
 
         <div class="cover-kicker">
             Familienchronik
@@ -3098,7 +3557,7 @@
         </h1>
 
         <div class="cover-subtitle">
-            Geschichten aus einem langen Leben
+            Ein Leben voller Geschichten
         </div>
 
         <div class="cover-ornament">
@@ -3106,10 +3565,10 @@
         </div>
 
         <div class="login-copy">
-            Ein persönliches Buch für Geschichten,
-            Begegnungen und Augenblicke,
-            die nicht verloren gehen sollen.
+            Menschen, Begegnungen und Augenblicke,
+            die bewahrt werden sollen.
         </div>
+
 
         <label for="email">
             E-Mail
@@ -3121,6 +3580,7 @@
             autocomplete="email"
         >
 
+
         <label for="password">
             Passwort
         </label>
@@ -3131,12 +3591,14 @@
             autocomplete="current-password"
         >
 
+
         <button
             id="loginButton"
             class="primary"
         >
             Erinnerungsbuch öffnen
         </button>
+
 
         <div id="loginMessage"></div>
 
@@ -3153,17 +3615,64 @@
 
     <div class="desk">
 
-        <div class="book-shadow">
+        <div class="book-holder">
 
             <main class="open-book">
 
-                <div class="page-edge-left"></div>
-                <div class="page-edge-right"></div>
+
+                <!-- florale Ecken -->
+
+                <div class="book-corner tl">
+                    <svg viewBox="0 0 100 100">
+                        <path d="M5 64 C26 59 39 41 43 7"></path>
+                        <path d="M17 55 C23 39 33 30 48 24"></path>
+                        <path d="M27 36 C18 34 14 27 15 19"></path>
+                        <path d="M38 22 C47 17 54 9 56 3"></path>
+                        <path d="M12 63 C16 71 24 77 33 79"></path>
+                    </svg>
+                </div>
+
+                <div class="book-corner tr">
+                    <svg viewBox="0 0 100 100">
+                        <path d="M5 64 C26 59 39 41 43 7"></path>
+                        <path d="M17 55 C23 39 33 30 48 24"></path>
+                        <path d="M27 36 C18 34 14 27 15 19"></path>
+                        <path d="M38 22 C47 17 54 9 56 3"></path>
+                        <path d="M12 63 C16 71 24 77 33 79"></path>
+                    </svg>
+                </div>
+
+                <div class="book-corner bl">
+                    <svg viewBox="0 0 100 100">
+                        <path d="M5 64 C26 59 39 41 43 7"></path>
+                        <path d="M17 55 C23 39 33 30 48 24"></path>
+                        <path d="M27 36 C18 34 14 27 15 19"></path>
+                        <path d="M38 22 C47 17 54 9 56 3"></path>
+                        <path d="M12 63 C16 71 24 77 33 79"></path>
+                    </svg>
+                </div>
+
+                <div class="book-corner br">
+                    <svg viewBox="0 0 100 100">
+                        <path d="M5 64 C26 59 39 41 43 7"></path>
+                        <path d="M17 55 C23 39 33 30 48 24"></path>
+                        <path d="M27 36 C18 34 14 27 15 19"></path>
+                        <path d="M38 22 C47 17 54 9 56 3"></path>
+                        <path d="M12 63 C16 71 24 77 33 79"></path>
+                    </svg>
+                </div>
+
+
+                <div class="spine-thread"></div>
+
 
                 <div class="book-content">
 
 
-                    <!-- Kopf -->
+                    <div class="roman-seal">
+                        R
+                    </div>
+
 
                     <div class="book-kicker">
                         Familienchronik
@@ -3174,7 +3683,7 @@
                     </h1>
 
                     <div class="book-subtitle">
-                        Geschichten aus einem langen Leben
+                        Ein Leben voller Geschichten
                     </div>
 
                     <div class="gold-ornament">
@@ -3220,23 +3729,21 @@
                             </div>
 
                             <h2 class="chapter-title">
-                                Was möchtest du heute erzählen?
+                                Welche Erinnerung möchtest du heute bewahren?
                             </h2>
 
-                            <div class="chapter-copy">
-                                Manchmal genügt eine Frage,
-                                um eine längst vergessene Tür
-                                zu öffnen. Und manchmal ist
-                                eine Erinnerung einfach plötzlich da.
+                            <div class="intro-quote">
+                                Manche Geschichten warten nur darauf,
+                                wieder erzählt zu werden.
                             </div>
 
 
                             <div class="opening-spread">
 
 
-                                <div class="opening-half">
+                                <section class="opening-half">
 
-                                    <div class="large-initial">
+                                    <div class="choice-medallion">
                                         ❧
                                     </div>
 
@@ -3245,11 +3752,10 @@
                                     </h3>
 
                                     <p>
-                                        Eine Frage führt dich
-                                        vielleicht zurück zu einem
-                                        Menschen, einem Ort,
-                                        einem Erlebnis oder einer
-                                        besonderen Zeit deines Lebens.
+                                        Eine Frage kann dich zurückführen
+                                        zu einem Menschen, einem Ort,
+                                        einem Erlebnis oder einer Zeit,
+                                        die lange nicht mehr im Mittelpunkt stand.
                                     </p>
 
                                     <button
@@ -3259,12 +3765,12 @@
                                         Eine Frage bekommen
                                     </button>
 
-                                </div>
+                                </section>
 
 
-                                <div class="opening-half">
+                                <section class="opening-half">
 
-                                    <div class="large-initial">
+                                    <div class="choice-medallion">
                                         ✦
                                     </div>
 
@@ -3273,11 +3779,10 @@
                                     </h3>
 
                                     <p>
-                                        Dir ist gerade etwas
-                                        eingefallen? Dann erzähl
-                                        einfach drauflos.
-                                        Die Erinnerung bestimmt selbst,
-                                        wo sie beginnt.
+                                        Vielleicht ist gerade etwas
+                                        wieder ganz nah.
+                                        Dann erzähl einfach drauflos –
+                                        so, wie die Erinnerung zu dir kommt.
                                     </p>
 
                                     <button
@@ -3287,7 +3792,7 @@
                                         Frei erzählen
                                     </button>
 
-                                </div>
+                                </section>
 
 
                             </div>
@@ -3304,7 +3809,7 @@
                                 <div id="questionContent">
 
                                     <div class="question-intro">
-                                        Heute möchte ich dich fragen
+                                        Eine Frage an dich
                                     </div>
 
                                     <div id="question"></div>
@@ -3323,10 +3828,10 @@
                                     </h2>
 
                                     <div class="free-copy">
-                                        Erzähl einfach in deinen
-                                        eigenen Worten.
+                                        Erzähl einfach.
                                         Nimm dir Zeit.
-                                        Es muss zu keiner Frage passen.
+                                        Die Erinnerung darf ihren
+                                        eigenen Weg nehmen.
                                     </div>
 
                                 </div>
@@ -3334,14 +3839,11 @@
 
                                 <div class="record-zone">
 
-
                                     <div class="record-stage">
 
-                                        <div class="brass-ring"></div>
-
-                                        <div
-                                            class="brass-ring two"
-                                        ></div>
+                                        <div class="halo one"></div>
+                                        <div class="halo two"></div>
+                                        <div class="halo three"></div>
 
                                         <button
                                             id="recordButton"
@@ -3353,6 +3855,7 @@
                                                 viewBox="0 0 48 48"
                                                 aria-hidden="true"
                                             >
+
                                                 <rect
                                                     x="17"
                                                     y="6"
@@ -3362,18 +3865,16 @@
                                                 ></rect>
 
                                                 <path
-                                                    d="M12 23
-                                                       C12 31 17 36 24 36
-                                                       C31 36 36 31 36 23"
+                                                    d="
+                                                        M12 23
+                                                        C12 31 17 36 24 36
+                                                        C31 36 36 31 36 23
+                                                    "
                                                 ></path>
 
-                                                <path
-                                                    d="M24 36 V43"
-                                                ></path>
+                                                <path d="M24 36 V43"></path>
+                                                <path d="M17 43 H31"></path>
 
-                                                <path
-                                                    d="M17 43 H31"
-                                                ></path>
                                             </svg>
 
                                             <span id="micText">
@@ -3397,8 +3898,8 @@
 
                                         <canvas
                                             id="audioMeter"
-                                            width="570"
-                                            height="88"
+                                            width="590"
+                                            height="92"
                                         ></canvas>
 
                                     </div>
@@ -3437,40 +3938,45 @@
                         <section id="processingBox">
 
                             <div class="chapter-label">
-                                Einen Augenblick
+                                Die Erinnerung entsteht
                             </div>
+
 
                             <svg
                                 class="quill"
                                 viewBox="0 0 64 64"
                                 aria-hidden="true"
                             >
+
                                 <path
-                                    d="M51 6
-                                       C37 8 24 19 17 35
-                                       L12 50
-                                       L27 43
-                                       C43 35 52 20 54 8
-                                       Z"
+                                    d="
+                                        M51 6
+                                        C37 8 24 19 17 35
+                                        L12 50
+                                        L27 43
+                                        C43 35 52 20 54 8
+                                        Z
+                                    "
                                     fill="none"
                                     stroke="currentColor"
                                     stroke-width="2"
                                 ></path>
 
                                 <path
-                                    d="M15 48
-                                       C24 36 34 26 48 13"
+                                    d="M15 48 C24 36 34 26 48 13"
                                     fill="none"
                                     stroke="currentColor"
                                     stroke-width="2"
                                 ></path>
+
                             </svg>
+
 
                             <h2>
                                 Deine Worte werden bewahrt
                             </h2>
 
-                            <div class="processing-line"></div>
+                            <div class="ink-line"></div>
 
                             <div
                                 id="processingText"
@@ -3561,6 +4067,7 @@
                                 Diese Erinnerung ist gespeichert.
                             </div>
 
+
                             <div id="privacyContainer"></div>
 
 
@@ -3603,7 +4110,7 @@
                             <div
                                 style="
                                     text-align:center;
-                                    margin-top:34px;
+                                    margin-top:35px;
                                 "
                             >
 
@@ -3635,13 +4142,12 @@
                         </div>
 
                         <h2 class="chapter-title">
-                            Festgehaltene Geschichten
+                            Geschichten, die bleiben
                         </h2>
 
                         <div class="chapter-copy">
                             Menschen, Orte, Begegnungen,
-                            Entscheidungen und Augenblicke
-                            aus Romans Leben.
+                            kleine Augenblicke und große Entscheidungen.
                         </div>
 
 
@@ -3672,7 +4178,7 @@
                     >
 
                         <div class="chapter-label">
-                            Durch ein langes Leben
+                            Durch die Jahre
                         </div>
 
                         <h2 class="chapter-title">
@@ -3680,10 +4186,9 @@
                         </h2>
 
                         <div class="chapter-copy">
-                            Mit jeder Geschichte entsteht
-                            nach und nach eine Chronik.
-                            Auch ungefähre Jahreszahlen
-                            können später ergänzt werden.
+                            Mit jeder Erinnerung wächst die Chronik.
+                            Manche Jahre sind ganz genau,
+                            andere bleiben bewusst ungefähr.
                         </div>
 
 
@@ -3719,7 +4224,7 @@
 
 
 <!-- =========================================================
-     ERINNERUNG ÖFFNEN
+     MEMORY DIALOG
 ========================================================= -->
 
 <div id="memoryDialog">
@@ -3734,15 +4239,20 @@
             ×
         </button>
 
+
         <div class="chapter-label">
             Eine Seite aus Romans Leben
         </div>
 
+
         <h2 id="dialogTitle"></h2>
+
 
         <div id="dialogTime"></div>
 
+
         <div id="dialogSummary"></div>
+
 
         <div id="dialogTranscript"></div>
 
@@ -3760,6 +4270,7 @@
                 Wann war das ungefähr?
             </h3>
 
+
             <label for="timelineYearInput">
                 Jahr
             </label>
@@ -3772,6 +4283,7 @@
                 placeholder="z. B. 1954"
             >
 
+
             <label for="timelineLabelInput">
                 Bezeichnung
             </label>
@@ -3782,6 +4294,7 @@
                 placeholder=
                 "z. B. Sommer 1954 oder etwa 1960"
             >
+
 
             <label for="timelineConfidenceInput">
                 Wie sicher ist die Angabe?
@@ -3802,6 +4315,7 @@
                 </option>
 
             </select>
+
 
             <button
                 id="saveTimelineButton"
@@ -4851,10 +5365,12 @@ function selectRecordingFormat() {
 
 
 /* =========================================================
-   AUDIOANZEIGE
+   AUDIO METER
 ========================================================= */
 
-function startAudioMeter(stream) {
+function startAudioMeter(
+    stream
+) {
 
     audioContext =
         new (
@@ -4880,7 +5396,7 @@ function startAudioMeter(stream) {
         256;
 
     analyser.smoothingTimeConstant =
-        .8;
+        .82;
 
 
     source.connect(
@@ -4932,7 +5448,8 @@ function drawAudioMeter() {
 
 
     const bars =
-        36;
+        38;
+
 
     const step =
         Math.max(
@@ -4951,7 +5468,8 @@ function drawAudioMeter() {
     const barWidth =
         (
             width
-            - gap * (
+            - gap
+            * (
                 bars - 1
             )
         )
@@ -4974,16 +5492,27 @@ function drawAudioMeter() {
         const shaped =
             Math.pow(
                 value,
-                .78
+                .75
+            );
+
+
+        const wave =
+            .65
+            + .35
+            * Math.sin(
+                Date.now()
+                / 300
+                + i * .55
             );
 
 
         const barHeight =
             Math.max(
-                4,
+                5,
                 shaped
                 * height
-                * .82
+                * .8
+                * wave
             );
 
 
@@ -5004,9 +5533,9 @@ function drawAudioMeter() {
 
 
         const alpha =
-            .28
+            .25
             + shaped
-            * .72;
+            * .75;
 
 
         const gradient =
@@ -5020,13 +5549,19 @@ function drawAudioMeter() {
 
         gradient.addColorStop(
             0,
-            `rgba(213,181,110,${alpha})`
+            `rgba(255,231,170,${alpha})`
+        );
+
+
+        gradient.addColorStop(
+            .5,
+            `rgba(196,153,79,${alpha})`
         );
 
 
         gradient.addColorStop(
             1,
-            `rgba(109,53,52,${alpha})`
+            `rgba(109,51,52,${alpha})`
         );
 
 
@@ -5142,12 +5677,14 @@ function startTimer() {
 
                 const minutes =
                     Math.floor(
-                        seconds / 60
+                        seconds
+                        / 60
                     );
 
 
                 const rest =
-                    seconds % 60;
+                    seconds
+                    % 60;
 
 
                 recordingTime.textContent =
@@ -5189,7 +5726,7 @@ function stopTimer() {
 
 
 /* =========================================================
-   AUFNAHME
+   RECORDING
 ========================================================= */
 
 async function startRecording() {
@@ -5360,7 +5897,7 @@ async function stopRecording() {
 
 
 /* =========================================================
-   ANTWORT ANLEGEN
+   CREATE ANSWER
 ========================================================= */
 
 async function createEmptyAnswer() {
@@ -5441,7 +5978,7 @@ async function createEmptyAnswer() {
 
 
 /* =========================================================
-   NACH DER AUFNAHME
+   AFTER RECORDING
 ========================================================= */
 
 async function handleFinishedRecording() {
@@ -5683,7 +6220,7 @@ async function handleFinishedRecording() {
 
 
 /* =========================================================
-   VERWERFEN
+   DISCARD
 ========================================================= */
 
 async function discardCurrentAnswer() {
@@ -5825,7 +6362,7 @@ async function discardMemory() {
 
 
 /* =========================================================
-   BESTÄTIGEN
+   CONFIRM
 ========================================================= */
 
 function confirmMemory() {
@@ -5938,9 +6475,8 @@ function showPrivacy(reason) {
                 line-height:1.65;
             "
         >
-            Soll diese Erinnerung
-            ausschließlich innerhalb
-            der Familie bleiben?
+            Soll diese Erinnerung ausschließlich
+            innerhalb der Familie bleiben?
         </p>
 
         ${
@@ -6082,7 +6618,7 @@ async function setVisibility(
 
 
 /* =========================================================
-   FOLGEFRAGE
+   FOLLOW UP
 ========================================================= */
 
 async function activateFollowUp() {
@@ -6191,7 +6727,7 @@ async function activateFollowUp() {
 
 
 /* =========================================================
-   ARCHIV
+   ARCHIVE
 ========================================================= */
 
 async function loadArchive() {
@@ -6239,10 +6775,12 @@ async function loadArchive() {
 
         archiveList.innerHTML =
             `
-            <p style="
-                text-align:center;
-                color:var(--ink-soft);
-            ">
+            <p
+                style="
+                    text-align:center;
+                    color:var(--ink-soft);
+                "
+            >
                 ${escapeHtml(
                     error.message
                 )}
@@ -6326,7 +6864,7 @@ function renderArchive(
                 "
             >
                 Noch wartet dieses Kapitel
-                auf seine ersten Erinnerungen.
+                auf seine ersten Geschichten.
             </div>
             `;
 
@@ -6465,7 +7003,7 @@ function filterArchive() {
 
 
 /* =========================================================
-   ZEITLEISTE
+   TIMELINE
 ========================================================= */
 
 function renderTimeline() {
@@ -6509,11 +7047,13 @@ function renderTimeline() {
 
         timelineList.innerHTML =
             `
-            <p style="
-                text-align:center;
-                color:var(--ink-soft);
-                font-style:italic;
-            ">
+            <p
+                style="
+                    text-align:center;
+                    color:var(--ink-soft);
+                    font-style:italic;
+                "
+            >
                 Noch wurde keine Erinnerung
                 zeitlich eingeordnet.
             </p>
@@ -6536,8 +7076,8 @@ function renderTimeline() {
 
             row.style.animationDelay =
                 `${Math.min(
-                    index * 70,
-                    650
+                    index * 75,
+                    700
                 )}ms`;
 
 
@@ -6580,7 +7120,7 @@ function renderTimeline() {
                         <div
                             style="
                                 margin-top:9px;
-                                color:var(--brass);
+                                color:var(--gold);
                                 font-style:italic;
                                 font-size:.9rem;
                             "
@@ -6634,13 +7174,13 @@ function renderTimeline() {
                     text-align:center;
                     color:var(--ink-soft);
                     margin:0 auto 25px;
-                    max-width:580px;
+                    max-width:590px;
                     line-height:1.6;
                 "
             >
                 Diese Geschichten warten noch
-                auf ihren Platz in Romans Leben.
-                Eine ungefähre Jahreszahl genügt.
+                auf ihren Platz in der Chronik.
+                Auch eine ungefähre Jahreszahl genügt.
             </p>
             `;
 
@@ -6704,7 +7244,7 @@ function renderTimeline() {
 
 
 /* =========================================================
-   ERINNERUNG ÖFFNEN
+   MEMORY OPEN
 ========================================================= */
 
 function openMemory(
@@ -6813,7 +7353,7 @@ function closeMemory() {
 
 
 /* =========================================================
-   ZEIT SPEICHERN
+   SAVE TIMELINE
 ========================================================= */
 
 async function saveTimeline() {
@@ -6976,7 +7516,7 @@ async function saveTimeline() {
 
 
 /* =========================================================
-   HTML ESCAPE
+   ESCAPE
 ========================================================= */
 
 function escapeHtml(
