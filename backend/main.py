@@ -29,8 +29,14 @@ from supabase import create_client, Client
 load_dotenv()
 
 SUPABASE_URL = os.getenv("SUPABASE_URL")
-SUPABASE_SERVICE_ROLE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY")
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+
+SUPABASE_SERVICE_ROLE_KEY = os.getenv(
+    "SUPABASE_SERVICE_ROLE_KEY"
+)
+
+OPENAI_API_KEY = os.getenv(
+    "OPENAI_API_KEY"
+)
 
 FFMPEG_PATH = os.getenv(
     "FFMPEG_PATH",
@@ -42,8 +48,11 @@ FRONTEND_ORIGIN = os.getenv(
     "http://127.0.0.1:5500",
 )
 
+
 if not SUPABASE_URL:
-    raise RuntimeError("SUPABASE_URL fehlt.")
+    raise RuntimeError(
+        "SUPABASE_URL fehlt."
+    )
 
 if not SUPABASE_SERVICE_ROLE_KEY:
     raise RuntimeError(
@@ -57,7 +66,9 @@ if not OPENAI_API_KEY:
 
 if (
     FFMPEG_PATH != "ffmpeg"
-    and not os.path.exists(FFMPEG_PATH)
+    and not os.path.exists(
+        FFMPEG_PATH
+    )
 ):
     raise RuntimeError(
         f"FFmpeg wurde nicht gefunden: {FFMPEG_PATH}"
@@ -65,7 +76,7 @@ if (
 
 
 # =========================================================
-# CLIENTS / APP
+# CLIENTS
 # =========================================================
 
 supabase: Client = create_client(
@@ -76,6 +87,11 @@ supabase: Client = create_client(
 openai_client = OpenAI(
     api_key=OPENAI_API_KEY
 )
+
+
+# =========================================================
+# APP
+# =========================================================
 
 app = FastAPI(
     title="Papa erzählt API"
@@ -132,19 +148,32 @@ class TimelineUpdate(BaseModel):
 
 
 # =========================================================
-# HILFSFUNKTIONEN
+# ALLGEMEINE HILFSFUNKTIONEN
 # =========================================================
 
-def utc_now_iso() -> str:
+def utc_now_iso():
     return datetime.now(
         timezone.utc
     ).isoformat()
 
 
+def clean_text(value):
+    if value is None:
+        return ""
+
+    return str(
+        value
+    ).strip()
+
+
+# =========================================================
+# AUTH
+# =========================================================
+
 def get_current_app_user(
     authorization: str | None = Header(
         default=None
-    ),
+    )
 ):
     if not authorization:
         raise HTTPException(
@@ -159,7 +188,8 @@ def get_current_app_user(
 
     if (
         len(parts) != 2
-        or parts[0].lower() != "bearer"
+        or parts[0].lower()
+        != "bearer"
     ):
         raise HTTPException(
             status_code=401,
@@ -283,8 +313,12 @@ def authorize_profile(
 
     if (
         not own_profile_id
-        or str(own_profile_id)
-        != str(profile_id)
+        or str(
+            own_profile_id
+        )
+        != str(
+            profile_id
+        )
     ):
         raise HTTPException(
             status_code=403,
@@ -299,7 +333,9 @@ def authorize_read_profile(
     current_user,
     profile_id: str,
 ):
-    role = current_user["role"]
+    role = (
+        current_user["role"]
+    )
 
     if role in (
         "admin",
@@ -316,8 +352,12 @@ def authorize_read_profile(
 
         if (
             own_profile_id
-            and str(own_profile_id)
-            == str(profile_id)
+            and str(
+                own_profile_id
+            )
+            == str(
+                profile_id
+            )
         ):
             return
 
@@ -328,6 +368,10 @@ def authorize_read_profile(
         ),
     )
 
+
+# =========================================================
+# DATENBANK-HILFSFUNKTIONEN
+# =========================================================
 
 def get_answer_or_404(
     answer_id: str
@@ -409,27 +453,52 @@ def get_question_or_none(
     return result.data[0]
 
 
-def get_root_answer(
+# =========================================================
+# ERINNERUNGS-KETTEN
+# =========================================================
+
+def get_answer_chain(
     answer: dict
 ):
     """
-    Ermittelt die erste Antwort
-    einer Folgefrage-Kette.
+    Liefert die komplette Kette von der
+    ursprünglichen Erinnerung bis zur
+    aktuellen Antwort.
+
+    Beispiel:
+
+    Hauptantwort
+       ↓
+    Folgeantwort 1
+       ↓
+    Folgeantwort 2
+
+    Rückgabe:
+    [
+        Hauptantwort,
+        Folgeantwort 1,
+        Folgeantwort 2
+    ]
     """
 
+    chain = []
     current = answer
     visited = set()
 
-    while True:
+    while current:
         current_id = str(
             current.get("id")
         )
 
         if current_id in visited:
-            return current
+            break
 
         visited.add(
             current_id
+        )
+
+        chain.append(
+            current
         )
 
         question = (
@@ -441,7 +510,7 @@ def get_root_answer(
         )
 
         if not question:
-            return current
+            break
 
         parent_answer_id = (
             question.get(
@@ -450,7 +519,7 @@ def get_root_answer(
         )
 
         if not parent_answer_id:
-            return current
+            break
 
         parent_result = (
             supabase
@@ -465,23 +534,40 @@ def get_root_answer(
         )
 
         if not parent_result.data:
-            return current
+            break
 
         current = (
             parent_result.data[0]
         )
 
+    chain.reverse()
+
+    return chain
+
+
+def get_root_answer(
+    answer: dict
+):
+    chain = get_answer_chain(
+        answer
+    )
+
+    if chain:
+        return chain[0]
+
+    return answer
+
 
 def get_timeline_family_answer_ids(
-    root_answer_id: str,
+    root_answer_id: str
 ):
     """
-    Liefert die Hauptantwort und
-    sämtliche vorhandenen Folgeantworten,
-    auch über mehrere Ebenen.
+    Sucht vom Ursprung aus sämtliche
+    Antworten, die über Folgefragen
+    zu dieser Erinnerung gehören.
     """
 
-    collected = []
+    answer_ids = []
     queue = [
         root_answer_id
     ]
@@ -492,21 +578,18 @@ def get_timeline_family_answer_ids(
             queue.pop(0)
         )
 
-        if (
-            parent_answer_id
-            in seen
-        ):
+        if parent_answer_id in seen:
             continue
 
         seen.add(
             parent_answer_id
         )
 
-        collected.append(
+        answer_ids.append(
             parent_answer_id
         )
 
-        child_questions_result = (
+        questions_result = (
             supabase
             .table("questions")
             .select("id")
@@ -517,58 +600,60 @@ def get_timeline_family_answer_ids(
             .execute()
         )
 
-        child_question_ids = [
+        question_ids = [
             row["id"]
+
             for row in (
-                child_questions_result.data
+                questions_result.data
                 or []
             )
+
             if row.get("id")
         ]
 
-        if not child_question_ids:
+        if not question_ids:
             continue
 
-        child_answers_result = (
+        answers_result = (
             supabase
             .table("answers")
             .select("id")
             .in_(
                 "question_id",
-                child_question_ids,
+                question_ids,
             )
             .execute()
         )
 
         for row in (
-            child_answers_result.data
+            answers_result.data
             or []
         ):
-            child_answer_id = (
+            child_id = (
                 row.get("id")
             )
 
             if (
-                child_answer_id
-                and child_answer_id
-                not in seen
+                child_id
+                and child_id not in seen
             ):
                 queue.append(
-                    child_answer_id
+                    child_id
                 )
 
-    return collected
+    return answer_ids
 
 
 def update_timeline_family(
     answer: dict,
-    timeline_year: int | None,
-    timeline_label: str | None,
-    timeline_confidence: str,
+    timeline_year,
+    timeline_label,
+    timeline_confidence,
 ):
     """
-    Speichert dieselbe Zeitangabe
-    in der kompletten Erinnerungs-Kette.
+    Eine Haupt-Erinnerung und alle
+    Folgeantworten bekommen dieselbe
+    zeitliche Einordnung.
     """
 
     root_answer = (
@@ -577,7 +662,7 @@ def update_timeline_family(
         )
     )
 
-    family_ids = (
+    answer_ids = (
         get_timeline_family_answer_ids(
             root_answer["id"]
         )
@@ -594,7 +679,7 @@ def update_timeline_family(
             timeline_confidence,
     }
 
-    if family_ids:
+    if answer_ids:
         (
             supabase
             .table("answers")
@@ -603,16 +688,154 @@ def update_timeline_family(
             )
             .in_(
                 "id",
-                family_ids,
+                answer_ids,
             )
             .execute()
         )
 
     return (
         root_answer,
-        family_ids,
+        answer_ids,
     )
 
+
+# =========================================================
+# KONTEXT FÜR TIEFE FOLGEFRAGEN
+# =========================================================
+
+def build_memory_chain_context(
+    answer: dict
+):
+    """
+    Gibt der KI die bisherigen Fragen UND
+    Antworten derselben Erinnerung.
+
+    Die aktuelle Antwort wird absichtlich
+    nicht in 'bisheriger Verlauf' aufgenommen,
+    weil sie separat im Prompt steht.
+    """
+
+    chain = get_answer_chain(
+        answer
+    )
+
+    if len(chain) <= 1:
+        return (
+            "Es gibt noch keine vorherigen "
+            "Antworten innerhalb dieser "
+            "Erinnerung."
+        )
+
+    previous_answers = (
+        chain[:-1]
+    )
+
+    blocks = []
+
+    for index, previous in enumerate(
+        previous_answers,
+        start=1,
+    ):
+        question = (
+            get_question_or_none(
+                previous.get(
+                    "question_id"
+                )
+            )
+        )
+
+        question_text = ""
+
+        if question:
+            question_text = clean_text(
+                question.get(
+                    "text"
+                )
+            )
+
+        transcript = clean_text(
+            previous.get(
+                "original_transcript"
+            )
+        )
+
+        if question_text:
+            block = (
+                f"Teil {index}\n"
+                f"Frage: {question_text}\n"
+                f"Antwort: {transcript}"
+            )
+
+        else:
+            block = (
+                f"Teil {index}\n"
+                f"Freie Erzählung: "
+                f"{transcript}"
+            )
+
+        blocks.append(
+            block
+        )
+
+    return "\n\n".join(
+        blocks
+    )
+
+
+def get_all_previous_questions(
+    answer: dict
+):
+    """
+    Liefert sämtliche Fragen, die innerhalb
+    dieser konkreten Erinnerung bereits
+    gestellt wurden.
+
+    Dadurch kann die KI erkennen, welche
+    Richtungen bereits abgefragt wurden.
+    """
+
+    chain = get_answer_chain(
+        answer
+    )
+
+    questions = []
+
+    for item in chain:
+        question = (
+            get_question_or_none(
+                item.get(
+                    "question_id"
+                )
+            )
+        )
+
+        if (
+            question
+            and clean_text(
+                question.get("text")
+            )
+        ):
+            questions.append(
+                clean_text(
+                    question.get("text")
+                )
+            )
+
+    if not questions:
+        return (
+            "Noch keine früheren Fragen "
+            "innerhalb dieser Erinnerung."
+        )
+
+    return "\n".join(
+        f"- {question}"
+        for question in questions
+    )
+
+
+# =========================================================
+# ZEIT NORMALISIEREN
+# =========================================================
 
 def normalize_timeline(
     year,
@@ -642,9 +865,9 @@ def normalize_timeline(
         year = None
         confidence = "unknown"
 
-    label = (
-        label or ""
-    ).strip()
+    label = clean_text(
+        label
+    )
 
     if (
         year is None
@@ -678,7 +901,7 @@ def health():
 def me(
     current_user=Depends(
         get_current_app_user
-    ),
+    )
 ):
     return {
         "id":
@@ -717,7 +940,7 @@ def me(
 def profiles(
     current_user=Depends(
         get_current_app_user
-    ),
+    )
 ):
     role = (
         current_user["role"]
@@ -764,12 +987,14 @@ def profiles(
 
     raise HTTPException(
         status_code=403,
-        detail="Keine Berechtigung.",
+        detail=(
+            "Keine Berechtigung."
+        ),
     )
 
 
 # =========================================================
-# ARCHIV
+# ARCHIV / ERINNERUNGEN
 # =========================================================
 
 @app.get("/archive")
@@ -1044,20 +1269,18 @@ def update_timeline(
 
     (
         root_answer,
-        family_ids,
-    ) = (
-        update_timeline_family(
-            answer=answer,
-            timeline_year=
-                payload.timeline_year,
-            timeline_label=
-                label,
-            timeline_confidence=
-                confidence,
-        )
+        answer_ids,
+    ) = update_timeline_family(
+        answer=answer,
+        timeline_year=
+            payload.timeline_year,
+        timeline_label=
+            label,
+        timeline_confidence=
+            confidence,
     )
 
-    updated = (
+    updated_answer = (
         get_answer_or_404(
             answer_id
         )
@@ -1068,13 +1291,13 @@ def update_timeline(
             "updated",
 
         "answer":
-            updated,
+            updated_answer,
 
         "timeline_root_answer_id":
             root_answer["id"],
 
         "updated_answer_ids":
-            family_ids,
+            answer_ids,
     }
 
 
@@ -1181,10 +1404,8 @@ def next_question(
     if not available:
         available = questions
 
-    selected = (
-        random.choice(
-            available
-        )
+    selected = random.choice(
+        available
     )
 
     history_insert = (
@@ -1222,7 +1443,7 @@ def next_question(
 
 
 # =========================================================
-# FOLGEFRAGE
+# FOLGEFRAGE ANLEGEN
 # =========================================================
 
 @app.post(
@@ -1263,13 +1484,27 @@ def create_follow_up(
             ),
         )
 
+    follow_up_text = (
+        clean_text(
+            payload.text
+        )
+    )
+
+    if not follow_up_text:
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                "Die Folgefrage ist leer."
+            ),
+        )
+
     question_insert = (
         supabase
         .table("questions")
         .insert(
             {
                 "text":
-                    payload.text,
+                    follow_up_text,
 
                 "category":
                     "Nachfrage",
@@ -1446,11 +1681,15 @@ def create_answer(
         profile_id,
     )
 
+    question_id = (
+        history.get(
+            "question_id"
+        )
+    )
+
     question = (
         get_question_or_none(
-            history.get(
-                "question_id"
-            )
+            question_id
         )
     )
 
@@ -1461,9 +1700,10 @@ def create_answer(
     )
 
     # -----------------------------------------------------
-    # WICHTIG:
-    # Ist das eine Folgefrage, übernimmt die neue Antwort
-    # sofort die Zeit der ursprünglichen Erinnerung.
+    # FOLGEFRAGE:
+    #
+    # Die neue Antwort gehört zeitlich zur
+    # ursprünglichen Erinnerung.
     # -----------------------------------------------------
 
     if (
@@ -1519,9 +1759,7 @@ def create_answer(
                     ),
 
                 "question_id":
-                    history.get(
-                        "question_id"
-                    ),
+                    question_id,
 
                 "original_transcript":
                     answer.text,
@@ -2198,7 +2436,9 @@ def transcribe_answer(
         ):
             if (
                 path
-                and os.path.exists(path)
+                and os.path.exists(
+                    path
+                )
             ):
                 try:
                     os.remove(
@@ -2249,56 +2489,127 @@ def analyze_answer(
             ),
         )
 
-    question_text = ""
-
     question_id = (
         answer.get(
             "question_id"
         )
     )
 
-    if question_id:
-        question_result = (
-            supabase
-            .table("questions")
-            .select("text")
-            .eq(
-                "id",
-                question_id,
-            )
-            .limit(1)
-            .execute()
+    question = (
+        get_question_or_none(
+            question_id
         )
+    )
 
-        if question_result.data:
-            question_text = (
-                question_result
-                .data[0]
-                .get(
-                    "text",
-                    ""
+    question_text = ""
+
+    if question:
+        question_text = (
+            clean_text(
+                question.get(
+                    "text"
                 )
             )
+        )
+
+    # -----------------------------------------------------
+    # GANZE BISHERIGE ERINNERUNG LADEN
+    # -----------------------------------------------------
+
+    previous_context = (
+        build_memory_chain_context(
+            answer
+        )
+    )
+
+    previous_questions = (
+        get_all_previous_questions(
+            answer
+        )
+    )
+
+    answer_chain = (
+        get_answer_chain(
+            answer
+        )
+    )
+
+    is_follow_up = (
+        len(answer_chain) > 1
+    )
 
     if question_text:
-        context_text = f"""
-Frage:
+        current_context_text = f"""
+Aktuelle Frage:
 {question_text}
 """
     else:
-        context_text = """
+        current_context_text = """
+Aktuelle Situation:
 Es handelt sich um eine freie Erinnerung.
-Es wurde vorher keine Frage gestellt.
+Es wurde keine Ausgangsfrage gestellt.
+"""
+
+    if is_follow_up:
+        chain_instruction = """
+Diese Antwort gehört zu einer bereits begonnenen
+Erinnerung. Die bisherige Unterhaltung ist deshalb
+sehr wichtig.
+
+Du MUSST bei der nächsten möglichen Nachfrage
+berücksichtigen, was bereits gefragt UND was bereits
+erzählt wurde.
+"""
+
+    else:
+        chain_instruction = """
+Dies ist der Beginn einer neuen Erinnerung.
+Eine eventuelle Nachfrage darf eine interessante
+noch nicht erzählte Ebene dieser Erinnerung öffnen.
 """
 
     prompt = f"""
 Du analysierst eine persönliche Lebenserinnerung
 für ein privates Familienarchiv.
 
-{context_text}
+Es geht nicht darum, möglichst viele Fragen zu stellen.
+Es geht darum, gute Lebenserinnerungen mit möglichst
+viel persönlicher Tiefe zu bewahren.
 
-Erzählung:
+{chain_instruction}
+
+==================================================
+BISHERIGER VERLAUF DIESER ERINNERUNG
+==================================================
+
+{previous_context}
+
+
+==================================================
+FRAGEN, DIE IN DIESER ERINNERUNG BEREITS
+GESTELLT WURDEN
+==================================================
+
+{previous_questions}
+
+
+==================================================
+AKTUELLE FRAGE
+==================================================
+
+{current_context_text}
+
+
+==================================================
+AKTUELLE ANTWORT
+==================================================
+
 {transcript}
+
+
+==================================================
+AUSGABE
+==================================================
 
 Antworte ausschließlich mit gültigem JSON.
 
@@ -2319,68 +2630,380 @@ Format:
   "timeline_confidence": "unknown"
 }}
 
-Regeln:
+
+==================================================
+ZUSAMMENFASSUNG
+==================================================
 
 summary:
-Kurze, natürliche und respektvolle Zusammenfassung.
+
+Schreibe eine kurze, natürliche und respektvolle
+Zusammenfassung der AKTUELLEN Antwort.
+
 Keine neuen Tatsachen erfinden.
 
+Keine psychologische Diagnose.
+
+Keine Interpretation als Tatsache darstellen.
+
+
 people:
+
 Genannte Personen oder Beziehungen.
 
+
 places:
+
 Genannte Orte.
 
+
 years:
+
 Im Text tatsächlich genannte Jahreszahlen
 oder klare Zeitangaben.
 
+
 topics:
+
 Wichtige Themen.
 
+
 keywords:
+
 Wichtige Stichwörter.
 
-follow_up_question:
-Eine kurze natürliche Nachfrage,
-wenn sich eine interessante Vertiefung anbietet.
-Das gilt auch für freie Erinnerungen.
-Sonst leerer String.
 
-ZEITLEISTE:
+==================================================
+FOLGEFRAGE – SEHR WICHTIG
+==================================================
+
+follow_up_question:
+
+Formuliere HÖCHSTENS EINE kurze,
+freundliche, offene und persönliche Nachfrage.
+
+Die Nachfrage soll den Erzähler dazu einladen,
+wenn er möchte, noch eine Ebene tiefer in diese
+konkrete Erinnerung einzutauchen.
+
+Das Ziel ist NICHT, Informationen abzuhaken.
+
+Das Ziel ist eine reichere Lebenserinnerung:
+ein konkreter Moment, ein Gefühl, ein Gedanke,
+eine Entscheidung, eine Beziehung, ein Konflikt,
+eine Veränderung oder eine persönliche Bedeutung.
+
+
+--------------------------------------------------
+ABSOLUTES WIEDERHOLUNGSVERBOT
+--------------------------------------------------
+
+Bevor du eine Folgefrage formulierst, prüfe den
+GESAMTEN bisherigen Verlauf dieser Erinnerung.
+
+Frage NICHT nach etwas, das bereits erzählt wurde.
+
+Frage NICHT nach etwas, das sinngemäß bereits
+erzählt wurde.
+
+Frage NICHT dieselbe Sache mit anderen Worten
+noch einmal.
+
+Paraphrasiere NICHT einfach eine Aussage des
+Erzählers und hänge ein Fragezeichen daran.
+
+Frage NICHT nach einer Information, deren Antwort
+bereits im bisherigen Verlauf steht.
+
+Frage NICHT erneut nach einer Person, einem Ort,
+einem Ereignis, einem Grund oder einem Gefühl,
+wenn dieser Punkt bereits ausreichend beschrieben
+wurde.
+
+Frage NICHT immer wieder:
+"Wie war das für dich?"
+wenn diese emotionale Ebene bereits erzählt wurde.
+
+Wurde eine Richtung bereits behandelt,
+musst du eine ANDERE, noch offene Ebene suchen.
+
+
+--------------------------------------------------
+MAXIMALE TIEFE
+--------------------------------------------------
+
+Bevorzuge eine noch nicht erzählte Ebene wie:
+
+1. KONKRETE SZENE
+   Gibt es einen einzelnen Augenblick,
+   der besonders deutlich im Gedächtnis geblieben ist?
+
+2. INNERER MOMENT
+   Was dachte oder fühlte die Person damals,
+   wenn genau das noch nicht erzählt wurde?
+
+3. ENTSCHEIDUNG
+   Gab es eine Entscheidung, einen Zweifel
+   oder einen Wendepunkt?
+
+4. BEZIEHUNG
+   Was bedeutete eine genannte Person damals
+   für den Erzähler?
+
+5. UNGESAGTES
+   Gab es etwas, das damals nicht ausgesprochen
+   wurde oder erst später verstanden wurde?
+
+6. SINNE UND ATMOSPHÄRE
+   Wie sah, klang oder roch ein konkreter Moment,
+   falls solche Details noch fehlen?
+
+7. FOLGEN
+   Was hat dieses Ereignis später im Leben verändert?
+
+8. HEUTIGER BLICK
+   Wie sieht der Erzähler heute auf diesen
+   konkreten damaligen Moment zurück?
+
+9. ÜBERRASCHUNG
+   Gab es etwas Unerwartetes oder etwas,
+   das anders kam als gedacht?
+
+10. PERSÖNLICHE BEDEUTUNG
+    Warum ist genau diese Erinnerung bis heute
+    im Gedächtnis geblieben?
+
+
+--------------------------------------------------
+BEVORZUGE ERZÄHLBARE FRAGEN
+--------------------------------------------------
+
+Die beste Nachfrage öffnet eine Geschichte.
+
+Sie soll möglichst nicht mit nur:
+
+"Ja",
+"Nein",
+einem Namen
+oder einer Jahreszahl
+
+beantwortet werden können.
+
+Bevorzuge Formulierungen, die zu einer Szene
+oder einer persönlichen Erzählung einladen.
+
+
+--------------------------------------------------
+TON
+--------------------------------------------------
+
+Die Frage soll warm, ruhig und respektvoll wirken.
+
+Sie darf neugierig sein.
+
+Sie darf persönlich sein.
+
+Sie darf tief gehen.
+
+Sie darf aber niemals drängen.
+
+Sie soll sich eher wie die Frage eines aufmerksamen
+Menschen anhören als wie ein Interview-Fragebogen.
+
+Keine therapeutische Sprache.
+
+Kein Verhörton.
+
+Keine künstlich pathetische Sprache.
+
+Keine Suggestivfrage.
+
+Keine Behauptung darüber, was der Erzähler
+gefühlt haben müsse.
+
+Keine Bewertung.
+
+
+--------------------------------------------------
+FREIWILLIGKEIT
+--------------------------------------------------
+
+Bei besonders persönlichen oder emotionalen
+Themen darf die Frage sanft formuliert sein,
+zum Beispiel:
+
+"Wenn du darüber erzählen möchtest:
+..."
+
+oder
+
+"Falls du dich daran erinnern möchtest:
+..."
+
+Aber benutze solche Einleitungen nicht
+mechanisch bei jeder Frage.
+
+
+--------------------------------------------------
+QUALITÄT VOR MENGE
+--------------------------------------------------
+
+Eine schlechte Folgefrage ist schlechter
+als gar keine Folgefrage.
+
+Wenn der Erzähler das Thema bereits sehr
+vollständig erzählt hat,
+
+ODER
+
+wenn dir nur eine Wiederholung einfällt,
+
+ODER
+
+wenn keine neue sinnvolle Ebene erkennbar ist,
+
+dann setze:
+
+"follow_up_question": ""
+
+
+--------------------------------------------------
+BEISPIELE FÜR SCHLECHTE FOLGEFRAGEN
+--------------------------------------------------
+
+Wenn bereits erzählt wurde:
+
+"Mein Vater hat mir das Fahrrad geschenkt
+und ich war unglaublich glücklich."
+
+SCHLECHT:
+"Wie hast du dich gefühlt, als dein Vater
+dir das Fahrrad geschenkt hat?"
+
+Die Antwort steht bereits da.
+
+
+Wenn bereits erzählt wurde:
+
+"Wir mussten 1954 nach München ziehen."
+
+SCHLECHT:
+"Seid ihr damals nach München gezogen?"
+
+Das ist nur eine Wiederholung.
+
+
+Wenn bereits erzählt wurde:
+
+"Meine Mutter war sehr streng."
+
+SCHLECHT:
+"War deine Mutter streng?"
+
+Die Antwort wurde schon gegeben.
+
+
+--------------------------------------------------
+BEISPIELE FÜR BESSERE TIEFE
+--------------------------------------------------
+
+Wenn erzählt wurde:
+
+"Mein Vater hat mir das Fahrrad geschenkt
+und ich war unglaublich glücklich."
+
+MÖGLICHERWEISE GUT:
+"Erinnerst du dich noch an den Moment,
+als du zum ersten Mal damit losgefahren bist?"
+
+Nur wenn dieser Moment noch nicht erzählt wurde.
+
+
+Wenn erzählt wurde:
+
+"Wir mussten 1954 nach München ziehen."
+
+MÖGLICHERWEISE GUT:
+"Was ist dir von eurem ersten Tag
+in München besonders im Gedächtnis geblieben?"
+
+Nur wenn dieser erste Tag noch nicht erzählt wurde.
+
+
+Wenn erzählt wurde:
+
+"Meine Mutter war sehr streng."
+
+MÖGLICHERWEISE GUT:
+"Gab es trotzdem einen Moment mit deiner Mutter,
+an den du besonders gern zurückdenkst?"
+
+Nur wenn diese Seite der Beziehung
+noch nicht erzählt wurde.
+
+
+==================================================
+ZEITLEISTE
+==================================================
 
 timeline_year:
+
 Nur eine vierstellige Jahreszahl,
-wenn sich aus der Erzählung selbst
+wenn sich aus der AKTUELLEN Erzählung selbst
 ein sinnvolles Jahr ergibt.
 
+
 timeline_label:
+
 Natürliche Bezeichnung wie:
+
 "1945"
+
 "etwa 1950"
+
 "Sommer 1962"
 
+
 timeline_confidence:
-"exact", wenn das Jahr klar genannt wurde.
-"approximate", wenn die Person selbst
-ungefähr ein Jahr nennt.
-"unknown", wenn kein belastbares Jahr
-vorhanden ist.
+
+"exact":
+wenn das Jahr klar genannt wurde.
+
+"approximate":
+wenn die Person selbst ungefähr ein Jahr nennt.
+
+"unknown":
+wenn kein belastbares Jahr vorhanden ist.
+
 
 WICHTIG:
+
 Keine historischen Jahreszahlen aus
 deinem Weltwissen ergänzen.
-Keine Jahreszahl bloß erraten.
-Bei Unsicherheit timeline_year = null
-und timeline_confidence = "unknown".
 
-PRIVACY:
+Keine Jahreszahl bloß erraten.
+
+Keine Jahreszahl daraus ableiten,
+welches historische Ereignis erwähnt wurde.
+
+Bei Unsicherheit:
+
+timeline_year = null
+
+timeline_confidence = "unknown"
+
+
+==================================================
+PRIVACY
+==================================================
 
 privacy_signal = true NUR wenn die Person
-klar ausdrückt, dass die Aussage vertraulich
-oder nicht für alle bestimmt sein soll.
+klar ausdrückt, dass die Aussage vertraulich,
+privat oder nicht für alle bestimmt sein soll.
+
 
 Beispiele TRUE:
+
 - "Das bleibt aber unter uns."
 - "Das sage ich dir im Vertrauen."
 - "Das soll nicht jeder wissen."
@@ -2388,18 +3011,26 @@ Beispiele TRUE:
 - "Das ist privat."
 - "Das soll nur die Familie wissen."
 
+
 Beispiele FALSE:
+
 - "Das ist kein Geheimnis."
 - "Das kann ruhig jeder wissen."
 - "Das kannst du allen erzählen."
 - Persönliche Inhalte ohne ausdrücklichen
   Vertraulichkeitswunsch.
 
-Bei Unsicherheit false.
+
+Bei Unsicherheit:
+
+privacy_signal = false
+
 
 privacy_reason:
-Bei true kurze Erklärung,
-sonst leer.
+
+Bei true kurze sachliche Erklärung.
+
+Sonst leerer String.
 """
 
     try:
@@ -2437,10 +3068,8 @@ sonst leer.
                     .strip()
                 )
 
-        analysis = (
-            json.loads(
-                raw_text
-            )
+        analysis = json.loads(
+            raw_text
         )
 
     except Exception as exc:
@@ -2456,6 +3085,11 @@ sonst leer.
                 "fehlgeschlagen."
             ),
         )
+
+
+    # =====================================================
+    # MEMORY SPEICHERN
+    # =====================================================
 
     memory_payload = {
         "answer_id":
@@ -2517,6 +3151,11 @@ sonst leer.
         else memory_payload
     )
 
+
+    # =====================================================
+    # PRIVACY NORMALISIEREN
+    # =====================================================
+
     privacy_value = (
         analysis.get(
             "privacy_signal",
@@ -2555,27 +3194,54 @@ sonst leer.
             )
         )
 
-    (
-        timeline_year,
-        timeline_label,
-        timeline_confidence,
-    ) = (
-        normalize_timeline(
-            analysis.get(
-                "timeline_year"
-            ),
 
-            analysis.get(
-                "timeline_label",
-                "",
-            ),
+    # =====================================================
+    # FOLGEFRAGE NORMALISIEREN
+    # =====================================================
 
-            analysis.get(
-                "timeline_confidence",
-                "unknown",
-            )
-            or "unknown",
+    follow_up_question = clean_text(
+        analysis.get(
+            "follow_up_question",
+            ""
         )
+    )
+
+    # Sicherheitsnetz:
+    # Eine extrem kurze "Frage" ist normalerweise
+    # keine brauchbare Vertiefung.
+
+    if (
+        follow_up_question
+        and len(
+            follow_up_question
+        ) < 12
+    ):
+        follow_up_question = ""
+
+
+    # =====================================================
+    # ZEIT NORMALISIEREN
+    # =====================================================
+
+    (
+        analyzed_year,
+        analyzed_label,
+        analyzed_confidence,
+    ) = normalize_timeline(
+        analysis.get(
+            "timeline_year"
+        ),
+
+        analysis.get(
+            "timeline_label",
+            ""
+        ),
+
+        analysis.get(
+            "timeline_confidence",
+            "unknown"
+        )
+        or "unknown",
     )
 
     root_answer = (
@@ -2584,7 +3250,7 @@ sonst leer.
         )
     )
 
-    is_follow_up = (
+    is_follow_up_answer = (
         str(
             root_answer["id"]
         )
@@ -2593,7 +3259,12 @@ sonst leer.
         )
     )
 
-    if is_follow_up:
+
+    # =====================================================
+    # ZEITLOGIK BEI FOLGEFRAGEN
+    # =====================================================
+
+    if is_follow_up_answer:
         root_year = (
             root_answer.get(
                 "timeline_year"
@@ -2613,27 +3284,26 @@ sonst leer.
             or "unknown"
         )
 
-        if (
-            root_year
-            is not None
-        ):
-            # -------------------------------------------------
-            # Haupt-Erinnerung hat bereits ein Jahr.
-            # Die Folgeantwort bleibt immer bei dieser Zeit.
-            # -------------------------------------------------
+        # -------------------------------------------------
+        # Ursprung hat bereits ein Jahr.
+        #
+        # Dann bleibt die gesamte Folgefrage bei
+        # diesem Ereignis.
+        # -------------------------------------------------
 
-            timeline_year = (
+        if root_year is not None:
+            final_year = (
                 root_year
             )
 
-            timeline_label = (
+            final_label = (
                 root_label
                 or str(
                     root_year
                 )
             )
 
-            timeline_confidence = (
+            final_confidence = (
                 root_confidence
             )
 
@@ -2642,58 +3312,70 @@ sonst leer.
                     answer,
 
                 timeline_year=
-                    timeline_year,
+                    final_year,
 
                 timeline_label=
-                    timeline_label,
+                    final_label,
 
                 timeline_confidence=
-                    timeline_confidence,
+                    final_confidence,
             )
 
-        elif (
-            timeline_year
-            is not None
-        ):
-            # -------------------------------------------------
-            # Erst die Folgeantwort nennt ein Jahr.
-            # Dann bekommt die komplette Erinnerungs-Kette
-            # dieses Jahr.
-            # -------------------------------------------------
+        # -------------------------------------------------
+        # Ursprung hat noch kein Jahr.
+        #
+        # Aber Roman nennt erst in der Folgeantwort
+        # ein belastbares Jahr.
+        #
+        # Dann bekommt die gesamte Erinnerungskette
+        # dieses Jahr.
+        # -------------------------------------------------
+
+        elif analyzed_year is not None:
+            final_year = (
+                analyzed_year
+            )
+
+            final_label = (
+                analyzed_label
+                or str(
+                    analyzed_year
+                )
+            )
+
+            final_confidence = (
+                analyzed_confidence
+            )
 
             update_timeline_family(
                 answer=
                     answer,
 
                 timeline_year=
-                    timeline_year,
+                    final_year,
 
                 timeline_label=
-                    (
-                        timeline_label
-                        or None
-                    ),
+                    final_label,
 
                 timeline_confidence=
-                    timeline_confidence,
+                    final_confidence,
             )
 
+        # -------------------------------------------------
+        # Noch immer kein Jahr.
+        # -------------------------------------------------
+
         else:
-            # -------------------------------------------------
-            # Weder Hauptantwort noch Folgeantwort
-            # haben ein belastbares Jahr.
-            # Die ganze Kette bleibt gemeinsam unbekannt.
-            # -------------------------------------------------
+            final_year = None
 
-            timeline_year = None
-
-            timeline_label = (
+            final_label = (
                 root_label
                 or ""
             )
 
-            timeline_confidence = (
+            final_confidence = (
                 root_confidence
+                or "unknown"
             )
 
             update_timeline_family(
@@ -2705,76 +3387,88 @@ sonst leer.
 
                 timeline_label=
                     (
-                        timeline_label
+                        final_label
                         or None
                     ),
 
                 timeline_confidence=
-                    timeline_confidence,
+                    final_confidence,
             )
 
-    elif (
-        answer.get(
-            "timeline_year"
-        )
-        is None
-    ):
-        # -----------------------------------------------------
-        # Hauptantwort:
-        # erkannte Zeit wird auf die gesamte Kette geschrieben.
-        # -----------------------------------------------------
 
-        update_timeline_family(
-            answer=
-                answer,
-
-            timeline_year=
-                timeline_year,
-
-            timeline_label=
-                (
-                    timeline_label
-                    or None
-                ),
-
-            timeline_confidence=
-                timeline_confidence,
-        )
+    # =====================================================
+    # ZEITLOGIK BEI HAUPTERINNERUNG
+    # =====================================================
 
     else:
-        # -----------------------------------------------------
-        # Bereits vorhandene oder manuell korrigierte
-        # Zeitangaben haben Vorrang vor der KI.
-        # -----------------------------------------------------
-
-        timeline_year = (
+        existing_year = (
             answer.get(
                 "timeline_year"
             )
         )
 
-        timeline_label = (
-            answer.get(
-                "timeline_label"
+        # Noch keine Zeit gespeichert:
+        # KI-Auswertung übernehmen.
+
+        if existing_year is None:
+            final_year = (
+                analyzed_year
             )
-            or (
-                str(
-                    timeline_year
+
+            final_label = (
+                analyzed_label
+            )
+
+            final_confidence = (
+                analyzed_confidence
+            )
+
+            update_timeline_family(
+                answer=
+                    answer,
+
+                timeline_year=
+                    final_year,
+
+                timeline_label=
+                    (
+                        final_label
+                        or None
+                    ),
+
+                timeline_confidence=
+                    final_confidence,
+            )
+
+        # Es existiert bereits eine Zeitangabe.
+        # Diese hat Vorrang vor einer späteren
+        # automatischen Analyse.
+
+        else:
+            final_year = (
+                existing_year
+            )
+
+            final_label = (
+                answer.get(
+                    "timeline_label"
                 )
-
-                if timeline_year
-                is not None
-
-                else ""
+                or str(
+                    existing_year
+                )
             )
-        )
 
-        timeline_confidence = (
-            answer.get(
-                "timeline_confidence"
+            final_confidence = (
+                answer.get(
+                    "timeline_confidence"
+                )
+                or "unknown"
             )
-            or "unknown"
-        )
+
+
+    # =====================================================
+    # RESPONSE
+    # =====================================================
 
     return {
         "status":
@@ -2787,10 +3481,7 @@ sonst leer.
             memory,
 
         "follow_up_question":
-            analysis.get(
-                "follow_up_question",
-                ""
-            ),
+            follow_up_question,
 
         "privacy_signal":
             privacy_signal,
@@ -2802,14 +3493,17 @@ sonst leer.
             ),
 
         "timeline_year":
-            timeline_year,
+            final_year,
 
         "timeline_label":
-            timeline_label,
+            final_label,
 
         "timeline_confidence":
-            timeline_confidence,
+            final_confidence,
 
         "timeline_root_answer_id":
             root_answer["id"],
+
+        "is_follow_up":
+            is_follow_up_answer,
     }
