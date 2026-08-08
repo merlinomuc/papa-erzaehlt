@@ -4,7 +4,6 @@ import random
 import subprocess
 import tempfile
 from datetime import datetime, timezone
-from uuid import uuid4
 
 from dotenv import load_dotenv
 from fastapi import (
@@ -54,7 +53,6 @@ if not SUPABASE_SERVICE_ROLE_KEY:
 if not OPENAI_API_KEY:
     raise RuntimeError("OPENAI_API_KEY fehlt.")
 
-
 if (
     FFMPEG_PATH != "ffmpeg"
     and not os.path.exists(FFMPEG_PATH)
@@ -86,7 +84,6 @@ app = FastAPI(
     title="Papa erzählt API"
 )
 
-
 allowed_origins = list(
     {
         FRONTEND_ORIGIN,
@@ -94,7 +91,6 @@ allowed_origins = list(
         "http://localhost:5500",
     }
 )
-
 
 app.add_middleware(
     CORSMiddleware,
@@ -124,32 +120,24 @@ class VisibilityUpdate(BaseModel):
     visibility: str
 
 
+class DiscardAnswerRequest(BaseModel):
+    history_id: str
+
+
 # =========================================================
 # AUTH
 # =========================================================
 
 def get_current_app_user(
-    authorization: str | None = Header(
-        default=None
-    )
+    authorization: str | None = Header(default=None)
 ):
-    """
-    Prüft:
-    1. Bearer Token vorhanden?
-    2. Supabase Auth akzeptiert Token?
-    3. Benutzer existiert in app_users?
-    """
-
     if not authorization:
         raise HTTPException(
             status_code=401,
             detail="Nicht angemeldet.",
         )
 
-    parts = authorization.split(
-        " ",
-        1,
-    )
+    parts = authorization.split(" ", 1)
 
     if (
         len(parts) != 2
@@ -169,32 +157,22 @@ def get_current_app_user(
         )
 
     try:
-        auth_response = (
-            supabase.auth.get_user(
-                token
-            )
-        )
-
+        auth_response = supabase.auth.get_user(token)
         auth_user = auth_response.user
 
     except Exception as exc:
-        print(
-            "AUTH ERROR:",
-            exc,
-        )
+        print("AUTH ERROR:", exc)
 
         raise HTTPException(
             status_code=401,
             detail="Session ist ungültig oder abgelaufen.",
         )
 
-
     if not auth_user:
         raise HTTPException(
             status_code=401,
             detail="Benutzer konnte nicht ermittelt werden.",
         )
-
 
     result = (
         supabase
@@ -210,35 +188,24 @@ def get_current_app_user(
         .execute()
     )
 
-
     if not result.data:
         raise HTTPException(
             status_code=403,
             detail="Dieser Benutzer ist nicht für die App freigeschaltet.",
         )
 
-
     app_user = result.data[0]
 
-    app_user["email"] = (
-        getattr(
-            auth_user,
-            "email",
-            None,
-        )
+    app_user["email"] = getattr(
+        auth_user,
+        "email",
+        None,
     )
 
     return app_user
 
 
-def require_writer(
-    current_user
-):
-    """
-    Schreibzugriff:
-    admin oder narrator.
-    """
-
+def require_writer(current_user):
     if current_user["role"] not in (
         "admin",
         "narrator",
@@ -253,25 +220,13 @@ def authorize_profile(
     current_user,
     profile_id: str,
 ):
-    """
-    Admin darf jedes Profil benutzen.
-
-    narrator darf ausschließlich
-    das mit seinem Benutzer
-    verbundene Profil benutzen.
-    """
-
-    require_writer(
-        current_user
-    )
+    require_writer(current_user)
 
     if current_user["role"] == "admin":
         return
 
-    own_profile_id = (
-        current_user.get(
-            "profile_id"
-        )
+    own_profile_id = current_user.get(
+        "profile_id"
     )
 
     if (
@@ -285,17 +240,12 @@ def authorize_profile(
         )
 
 
-def get_answer_or_404(
-    answer_id: str
-):
+def get_answer_or_404(answer_id: str):
     result = (
         supabase
         .table("answers")
         .select("*")
-        .eq(
-            "id",
-            answer_id,
-        )
+        .eq("id", answer_id)
         .limit(1)
         .execute()
     )
@@ -309,17 +259,12 @@ def get_answer_or_404(
     return result.data[0]
 
 
-def get_history_or_404(
-    history_id: str
-):
+def get_history_or_404(history_id: str):
     result = (
         supabase
         .table("question_history")
         .select("*")
-        .eq(
-            "id",
-            history_id,
-        )
+        .eq("id", history_id)
         .limit(1)
         .execute()
     )
@@ -355,27 +300,12 @@ def me(
     )
 ):
     return {
-        "id":
-            current_user["id"],
-
-        "auth_user_id":
-            current_user["auth_user_id"],
-
-        "display_name":
-            current_user["display_name"],
-
-        "role":
-            current_user["role"],
-
-        "profile_id":
-            current_user.get(
-                "profile_id"
-            ),
-
-        "email":
-            current_user.get(
-                "email"
-            ),
+        "id": current_user["id"],
+        "auth_user_id": current_user["auth_user_id"],
+        "display_name": current_user["display_name"],
+        "role": current_user["role"],
+        "profile_id": current_user.get("profile_id"),
+        "email": current_user.get("email"),
     }
 
 
@@ -389,31 +319,22 @@ def profiles(
         get_current_app_user
     )
 ):
-
     role = current_user["role"]
 
-
     if role == "admin":
-
         result = (
             supabase
             .table("profiles")
             .select("*")
-            .order(
-                "display_name"
-            )
+            .order("display_name")
             .execute()
         )
 
         return result.data
 
-
     if role == "narrator":
-
-        profile_id = (
-            current_user.get(
-                "profile_id"
-            )
+        profile_id = current_user.get(
+            "profile_id"
         )
 
         if not profile_id:
@@ -423,30 +344,22 @@ def profiles(
             supabase
             .table("profiles")
             .select("*")
-            .eq(
-                "id",
-                profile_id,
-            )
+            .eq("id", profile_id)
             .execute()
         )
 
         return result.data
 
-
     if role == "reader":
-
         result = (
             supabase
             .table("profiles")
             .select("*")
-            .order(
-                "display_name"
-            )
+            .order("display_name")
             .execute()
         )
 
         return result.data
-
 
     raise HTTPException(
         status_code=403,
@@ -465,25 +378,19 @@ def next_question(
         get_current_app_user
     ),
 ):
-
     authorize_profile(
         current_user,
         profile_id,
     )
 
-
     profile_result = (
         supabase
         .table("profiles")
         .select("id")
-        .eq(
-            "id",
-            profile_id,
-        )
+        .eq("id", profile_id)
         .limit(1)
         .execute()
     )
-
 
     if not profile_result.data:
         raise HTTPException(
@@ -491,31 +398,21 @@ def next_question(
             detail="Profil nicht gefunden.",
         )
 
-
     questions_result = (
         supabase
         .table("questions")
         .select("*")
-        .neq(
-            "source",
-            "follow_up",
-        )
+        .neq("source", "follow_up")
         .execute()
     )
 
-
-    questions = (
-        questions_result.data
-        or []
-    )
-
+    questions = questions_result.data or []
 
     if not questions:
         raise HTTPException(
             status_code=404,
             detail="Keine Fragen vorhanden.",
         )
-
 
     history_result = (
         supabase
@@ -530,7 +427,6 @@ def next_question(
         .execute()
     )
 
-
     answered_ids = {
         row["question_id"]
         for row in (
@@ -540,12 +436,9 @@ def next_question(
         if (
             row.get("status")
             == "answered"
-            and row.get(
-                "question_id"
-            )
+            and row.get("question_id")
         )
     }
-
 
     available = [
         question
@@ -554,56 +447,39 @@ def next_question(
         not in answered_ids
     ]
 
-
     if not available:
         available = questions
-
 
     selected = random.choice(
         available
     )
-
 
     history_insert = (
         supabase
         .table("question_history")
         .insert(
             {
-                "profile_id":
-                    profile_id,
-
-                "question_id":
-                    selected["id"],
-
-                "status":
-                    "shown",
-
-                "shown_at":
-                    datetime.now(
-                        timezone.utc
-                    ).isoformat(),
+                "profile_id": profile_id,
+                "question_id": selected["id"],
+                "status": "shown",
+                "shown_at": datetime.now(
+                    timezone.utc
+                ).isoformat(),
             }
         )
         .execute()
     )
 
-
-    history = (
-        history_insert.data[0]
-    )
-
+    history = history_insert.data[0]
 
     return {
-        "history_id":
-            history["id"],
-
-        "question":
-            selected,
+        "history_id": history["id"],
+        "question": selected,
     }
 
 
 # =========================================================
-# FOLGEFRAGE SPEICHERN
+# FOLGEFRAGE
 # =========================================================
 
 @app.post("/question/follow-up")
@@ -613,25 +489,18 @@ def create_follow_up(
         get_current_app_user
     ),
 ):
-
     authorize_profile(
         current_user,
         payload.profile_id,
     )
 
-
-    parent_answer = (
-        get_answer_or_404(
-            payload.parent_answer_id
-        )
+    parent_answer = get_answer_or_404(
+        payload.parent_answer_id
     )
-
 
     if (
         str(
-            parent_answer[
-                "profile_id"
-            ]
+            parent_answer["profile_id"]
         )
         != str(
             payload.profile_id
@@ -642,21 +511,14 @@ def create_follow_up(
             detail="Antwort gehört nicht zu diesem Profil.",
         )
 
-
     question_insert = (
         supabase
         .table("questions")
         .insert(
             {
-                "text":
-                    payload.text,
-
-                "category":
-                    "Nachfrage",
-
-                "source":
-                    "follow_up",
-
+                "text": payload.text,
+                "category": "Nachfrage",
+                "source": "follow_up",
                 "parent_answer_id":
                     payload.parent_answer_id,
             }
@@ -664,11 +526,7 @@ def create_follow_up(
         .execute()
     )
 
-
-    question = (
-        question_insert.data[0]
-    )
-
+    question = question_insert.data[0]
 
     history_insert = (
         supabase
@@ -693,11 +551,7 @@ def create_follow_up(
         .execute()
     )
 
-
-    history = (
-        history_insert.data[0]
-    )
-
+    history = history_insert.data[0]
 
     return {
         "history_id":
@@ -709,7 +563,7 @@ def create_follow_up(
 
 
 # =========================================================
-# FRAGE ALS BEANTWORTET MARKIEREN
+# FRAGE BEANTWORTET
 # =========================================================
 
 @app.post("/question/{history_id}/answered")
@@ -719,18 +573,14 @@ def question_answered(
         get_current_app_user
     ),
 ):
-
-    history = (
-        get_history_or_404(
-            history_id
-        )
+    history = get_history_or_404(
+        history_id
     )
 
     authorize_profile(
         current_user,
         history["profile_id"],
     )
-
 
     (
         supabase
@@ -746,17 +596,12 @@ def question_answered(
                     ).isoformat(),
             }
         )
-        .eq(
-            "id",
-            history_id,
-        )
+        .eq("id", history_id)
         .execute()
     )
 
-
     return {
-        "status":
-            "answered"
+        "status": "answered"
     }
 
 
@@ -771,11 +616,8 @@ def question_skipped(
         get_current_app_user
     ),
 ):
-
-    history = (
-        get_history_or_404(
-            history_id
-        )
+    history = get_history_or_404(
+        history_id
     )
 
     authorize_profile(
@@ -783,32 +625,23 @@ def question_skipped(
         history["profile_id"],
     )
 
-
     (
         supabase
         .table("question_history")
         .update(
             {
-                "status":
-                    "skipped",
-
-                "skipped_at":
-                    datetime.now(
-                        timezone.utc
-                    ).isoformat(),
+                "status": "skipped",
+                "skipped_at": datetime.now(
+                    timezone.utc
+                ).isoformat(),
             }
         )
-        .eq(
-            "id",
-            history_id,
-        )
+        .eq("id", history_id)
         .execute()
     )
 
-
     return {
-        "status":
-            "skipped"
+        "status": "skipped"
     }
 
 
@@ -823,24 +656,18 @@ def create_answer(
         get_current_app_user
     ),
 ):
-
-    history = (
-        get_history_or_404(
-            answer.history_id
-        )
+    history = get_history_or_404(
+        answer.history_id
     )
 
-
-    profile_id = (
-        history["profile_id"]
-    )
-
+    profile_id = history[
+        "profile_id"
+    ]
 
     authorize_profile(
         current_user,
         profile_id,
     )
-
 
     insert_result = (
         supabase
@@ -881,11 +708,9 @@ def create_answer(
         .execute()
     )
 
-
     created_answer = (
         insert_result.data[0]
     )
-
 
     (
         supabase
@@ -908,10 +733,136 @@ def create_answer(
         .execute()
     )
 
-
     return {
         "answer":
             created_answer
+    }
+
+
+# =========================================================
+# ENTWURF VERWERFEN
+# =========================================================
+
+@app.post("/answer/{answer_id}/discard")
+def discard_answer(
+    answer_id: str,
+    payload: DiscardAnswerRequest,
+    current_user=Depends(
+        get_current_app_user
+    ),
+):
+    answer = get_answer_or_404(
+        answer_id
+    )
+
+    history = get_history_or_404(
+        payload.history_id
+    )
+
+    authorize_profile(
+        current_user,
+        answer["profile_id"],
+    )
+
+    if (
+        str(history["profile_id"])
+        != str(answer["profile_id"])
+    ):
+        raise HTTPException(
+            status_code=400,
+            detail="Frage und Antwort gehören nicht zusammen.",
+        )
+
+    if (
+        history.get("question_id")
+        and answer.get("question_id")
+        and str(history["question_id"])
+        != str(answer["question_id"])
+    ):
+        raise HTTPException(
+            status_code=400,
+            detail="Frage und Antwort gehören nicht zusammen.",
+        )
+
+    audio_path = answer.get(
+        "audio_path"
+    )
+
+    if audio_path:
+        try:
+            (
+                supabase
+                .storage
+                .from_("memories-audio")
+                .remove(
+                    [audio_path]
+                )
+            )
+        except Exception as exc:
+            print(
+                "AUDIO DELETE WARNING:",
+                exc,
+            )
+
+    try:
+        (
+            supabase
+            .table("memories")
+            .delete()
+            .eq(
+                "answer_id",
+                answer_id,
+            )
+            .execute()
+        )
+    except Exception as exc:
+        print(
+            "MEMORY DELETE WARNING:",
+            exc,
+        )
+
+    (
+        supabase
+        .table("answers")
+        .delete()
+        .eq(
+            "id",
+            answer_id,
+        )
+        .execute()
+    )
+
+    (
+        supabase
+        .table("question_history")
+        .update(
+            {
+                "status":
+                    "shown",
+
+                "answered_at":
+                    None,
+
+                "skipped_at":
+                    None,
+            }
+        )
+        .eq(
+            "id",
+            payload.history_id,
+        )
+        .execute()
+    )
+
+    return {
+        "status":
+            "discarded",
+
+        "answer_id":
+            answer_id,
+
+        "history_id":
+            payload.history_id,
     }
 
 
@@ -927,7 +878,6 @@ def update_visibility(
         get_current_app_user
     ),
 ):
-
     if payload.visibility not in (
         "family",
         "all",
@@ -937,19 +887,14 @@ def update_visibility(
             detail="visibility muss 'family' oder 'all' sein.",
         )
 
-
-    answer = (
-        get_answer_or_404(
-            answer_id
-        )
+    answer = get_answer_or_404(
+        answer_id
     )
-
 
     authorize_profile(
         current_user,
         answer["profile_id"],
     )
-
 
     result = (
         supabase
@@ -966,7 +911,6 @@ def update_visibility(
         )
         .execute()
     )
-
 
     return {
         "status":
@@ -999,37 +943,27 @@ async def upload_audio(
         get_current_app_user
     ),
 ):
-
-    answer = (
-        get_answer_or_404(
-            answer_id
-        )
+    answer = get_answer_or_404(
+        answer_id
     )
-
 
     authorize_profile(
         current_user,
         answer["profile_id"],
     )
 
-
     filename = (
         audio.filename
         or "aufnahme.webm"
     )
 
-
     extension = (
         filename
-        .rsplit(
-            ".",
-            1,
-        )[-1]
+        .rsplit(".", 1)[-1]
         .lower()
         if "." in filename
         else "webm"
     )
-
 
     allowed_extensions = {
         "webm",
@@ -1039,18 +973,13 @@ async def upload_audio(
         "ogg",
     }
 
-
     if extension not in allowed_extensions:
         raise HTTPException(
             status_code=400,
             detail="Nicht unterstütztes Audioformat.",
         )
 
-
-    file_bytes = (
-        await audio.read()
-    )
-
+    file_bytes = await audio.read()
 
     if not file_bytes:
         raise HTTPException(
@@ -1058,11 +987,11 @@ async def upload_audio(
             detail="Audiodatei ist leer.",
         )
 
-
     now = datetime.now(
         timezone.utc
     )
 
+    from uuid import uuid4
 
     storage_path = (
         f"{answer['profile_id']}/"
@@ -1071,9 +1000,7 @@ async def upload_audio(
         f"{uuid4()}.{extension}"
     )
 
-
     try:
-
         (
             supabase
             .storage
@@ -1093,7 +1020,6 @@ async def upload_audio(
         )
 
     except Exception as exc:
-
         print(
             "UPLOAD ERROR:",
             exc,
@@ -1103,7 +1029,6 @@ async def upload_audio(
             status_code=500,
             detail="Audio konnte nicht gespeichert werden.",
         )
-
 
     (
         supabase
@@ -1120,7 +1045,6 @@ async def upload_audio(
         )
         .execute()
     )
-
 
     return {
         "status":
@@ -1145,26 +1069,18 @@ def transcribe_answer(
         get_current_app_user
     ),
 ):
-
-    answer = (
-        get_answer_or_404(
-            answer_id
-        )
+    answer = get_answer_or_404(
+        answer_id
     )
-
 
     authorize_profile(
         current_user,
         answer["profile_id"],
     )
 
-
-    audio_path = (
-        answer.get(
-            "audio_path"
-        )
+    audio_path = answer.get(
+        "audio_path"
     )
-
 
     if not audio_path:
         raise HTTPException(
@@ -1172,9 +1088,7 @@ def transcribe_answer(
             detail="Für diese Antwort ist kein Audio gespeichert.",
         )
 
-
     try:
-
         audio_bytes = (
             supabase
             .storage
@@ -1185,7 +1099,6 @@ def transcribe_answer(
         )
 
     except Exception as exc:
-
         print(
             "DOWNLOAD ERROR:",
             exc,
@@ -1193,31 +1106,23 @@ def transcribe_answer(
 
         raise HTTPException(
             status_code=500,
-            detail="Audio konnte nicht aus dem Speicher geladen werden.",
+            detail="Audio konnte nicht geladen werden.",
         )
-
 
     original_extension = (
         audio_path
-        .rsplit(
-            ".",
-            1,
-        )[-1]
+        .rsplit(".", 1)[-1]
         .lower()
     )
-
 
     source_file = None
     wav_file = None
 
-
     try:
-
         with tempfile.NamedTemporaryFile(
             delete=False,
             suffix=f".{original_extension}",
         ) as temp_source:
-
             temp_source.write(
                 audio_bytes
             )
@@ -1226,16 +1131,13 @@ def transcribe_answer(
                 temp_source.name
             )
 
-
         with tempfile.NamedTemporaryFile(
             delete=False,
             suffix=".wav",
         ) as temp_wav:
-
             wav_file = (
                 temp_wav.name
             )
-
 
         command = [
             FFMPEG_PATH,
@@ -1251,16 +1153,13 @@ def transcribe_answer(
             wav_file,
         ]
 
-
         process = subprocess.run(
             command,
             capture_output=True,
             text=True,
         )
 
-
         if process.returncode != 0:
-
             print(
                 "FFMPEG ERROR:",
                 process.stderr,
@@ -1268,15 +1167,13 @@ def transcribe_answer(
 
             raise HTTPException(
                 status_code=500,
-                detail="Audio konnte nicht für die Transkription vorbereitet werden.",
+                detail="Audio konnte nicht vorbereitet werden.",
             )
-
 
         with open(
             wav_file,
             "rb",
         ) as audio_handle:
-
             transcription = (
                 openai_client
                 .audio
@@ -1293,12 +1190,10 @@ def transcribe_answer(
                 )
             )
 
-
         transcript = (
             transcription.text
             or ""
         ).strip()
-
 
         (
             supabase
@@ -1316,7 +1211,6 @@ def transcribe_answer(
             .execute()
         )
 
-
         return {
             "status":
                 "transcribed",
@@ -1328,26 +1222,17 @@ def transcribe_answer(
                 transcript,
         }
 
-
     finally:
-
         for path in (
             source_file,
             wav_file,
         ):
-
             if (
                 path
-                and os.path.exists(
-                    path
-                )
+                and os.path.exists(path)
             ):
-
                 try:
-                    os.remove(
-                        path
-                    )
-
+                    os.remove(path)
                 except OSError:
                     pass
 
@@ -1363,19 +1248,14 @@ def analyze_answer(
         get_current_app_user
     ),
 ):
-
-    answer = (
-        get_answer_or_404(
-            answer_id
-        )
+    answer = get_answer_or_404(
+        answer_id
     )
-
 
     authorize_profile(
         current_user,
         answer["profile_id"],
     )
-
 
     transcript = (
         answer.get(
@@ -1384,43 +1264,29 @@ def analyze_answer(
         or ""
     ).strip()
 
-
     if not transcript:
         raise HTTPException(
             status_code=400,
             detail="Die Antwort enthält noch kein Transkript.",
         )
 
-
     question_text = ""
 
-
-    question_id = (
-        answer.get(
-            "question_id"
-        )
+    question_id = answer.get(
+        "question_id"
     )
 
-
     if question_id:
-
         question_result = (
             supabase
             .table("questions")
-            .select(
-                "text"
-            )
-            .eq(
-                "id",
-                question_id,
-            )
+            .select("text")
+            .eq("id", question_id)
             .limit(1)
             .execute()
         )
 
-
         if question_result.data:
-
             question_text = (
                 question_result
                 .data[0]
@@ -1429,7 +1295,6 @@ def analyze_answer(
                     ""
                 )
             )
-
 
     prompt = f"""
 Du analysierst eine persönliche Lebenserinnerung
@@ -1460,18 +1325,18 @@ Format:
 Regeln:
 
 summary:
-Kurze Zusammenfassung der Erinnerung.
+Kurze, natürliche Zusammenfassung.
 Keine neuen Tatsachen erfinden.
+Formuliere freundlich und respektvoll.
 
 people:
-Genannte Personen oder erkennbare Beziehungen,
-zum Beispiel "Mutter", "Vater", "Bruder".
+Genannte Personen oder Beziehungen.
 
 places:
 Genannte Orte.
 
 years:
-Genannte Jahreszahlen oder klar erkennbare Zeitangaben.
+Jahreszahlen oder Zeitangaben.
 
 topics:
 Wichtige Themen.
@@ -1481,10 +1346,8 @@ Wichtige Stichwörter.
 
 follow_up_question:
 Eine kurze, natürliche und respektvolle Nachfrage,
-wenn sich aus der Antwort eine interessante
-Vertiefung ergibt.
-Wenn keine sinnvolle Nachfrage nötig ist,
-leerer String.
+wenn sich eine interessante Vertiefung anbietet.
+Wenn nicht, leerer String.
 
 PRIVACY:
 
@@ -1504,21 +1367,17 @@ Beispiele FALSE:
 - "Das ist kein Geheimnis."
 - "Das kann ruhig jeder wissen."
 - "Das kannst du allen erzählen."
-- bloß peinliche oder persönliche Inhalte ohne
-  ausdrücklichen Wunsch nach Vertraulichkeit.
+- Persönliche Inhalte ohne ausdrücklichen Wunsch
+  nach Vertraulichkeit.
 
-Bei Unsicherheit privacy_signal = false.
+Bei Unsicherheit false.
 
 privacy_reason:
-Wenn privacy_signal true ist:
-kurze Erklärung, wodurch der Wunsch nach
-Vertraulichkeit erkannt wurde.
-Sonst leerer String.
+Bei true kurze Erklärung.
+Sonst leer.
 """
 
-
     try:
-
         response = (
             openai_client
             .responses
@@ -1528,37 +1387,25 @@ Sonst leerer String.
             )
         )
 
-
         raw_text = (
             response.output_text
             or ""
         ).strip()
 
+        if raw_text.startswith("```"):
+            raw_text = raw_text.strip("`")
 
-        if raw_text.startswith(
-            "```"
-        ):
-
-            raw_text = raw_text.strip(
-                "`"
-            )
-
-            if raw_text.startswith(
-                "json"
-            ):
+            if raw_text.startswith("json"):
                 raw_text = (
                     raw_text[4:]
                     .strip()
                 )
 
-
         analysis = json.loads(
             raw_text
         )
 
-
     except Exception as exc:
-
         print(
             "ANALYSIS ERROR:",
             exc,
@@ -1568,7 +1415,6 @@ Sonst leerer String.
             status_code=500,
             detail="KI-Auswertung fehlgeschlagen.",
         )
-
 
     memory_payload = {
         "answer_id":
@@ -1611,7 +1457,6 @@ Sonst leerer String.
             ),
     }
 
-
     memory_result = (
         supabase
         .table("memories")
@@ -1622,36 +1467,27 @@ Sonst leerer String.
         .execute()
     )
 
-
     memory = (
         memory_result.data[0]
         if memory_result.data
         else memory_payload
     )
 
-
-    privacy_value = (
-        analysis.get(
-            "privacy_signal",
-            False
-        )
+    privacy_value = analysis.get(
+        "privacy_signal",
+        False
     )
-
 
     if isinstance(
         privacy_value,
         bool,
     ):
-
-        privacy_signal = (
-            privacy_value
-        )
+        privacy_signal = privacy_value
 
     elif isinstance(
         privacy_value,
         str,
     ):
-
         privacy_signal = (
             privacy_value
             .strip()
@@ -1665,11 +1501,9 @@ Sonst leerer String.
         )
 
     else:
-
         privacy_signal = bool(
             privacy_value
         )
-
 
     return {
         "status":

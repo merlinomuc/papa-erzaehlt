@@ -4,149 +4,497 @@
 <head>
     <meta charset="UTF-8">
 
-    <meta name="viewport"
-          content="width=device-width, initial-scale=1.0">
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
 
-    <title>Papa erzählt</title>
+    <title>Romans Erinnerungen</title>
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
     <style>
+        :root {
+            --paper: #f6f0e5;
+            --paper-light: #fffdf8;
+            --ink: #29241e;
+            --muted: #756b60;
+            --line: #d8ccbb;
+            --green: #405c4b;
+            --green-dark: #304638;
+            --wine: #7d4945;
+            --gold: #b18a4b;
+            --shadow: 0 10px 35px rgba(65, 48, 31, 0.10);
+        }
+
         * {
             box-sizing: border-box;
         }
 
-        body {
-            font-family: Arial, sans-serif;
-            max-width: 800px;
-            margin: 40px auto;
-            padding: 20px;
-            line-height: 1.5;
+        html {
+            font-size: 18px;
         }
 
-        h1 {
-            font-size: 36px;
+        body {
+            margin: 0;
+            background:
+                radial-gradient(
+                    circle at top,
+                    #fffdf8 0,
+                    var(--paper) 68%
+                );
+            color: var(--ink);
+            font-family:
+                Arial,
+                Helvetica,
+                sans-serif;
+            min-height: 100vh;
+        }
+
+        button,
+        input {
+            font: inherit;
         }
 
         button {
-            font-size: 20px;
-            padding: 15px 24px;
-            margin: 8px 8px 8px 0;
             cursor: pointer;
+        }
+
+        .page {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 34px 24px 70px;
+        }
+
+        .book-title {
+            font-family:
+                Georgia,
+                "Times New Roman",
+                serif;
+            font-size: clamp(
+                2.5rem,
+                6vw,
+                4.2rem
+            );
+            font-weight: normal;
+            text-align: center;
+            margin: 20px 0 8px;
+            letter-spacing: -0.03em;
+        }
+
+        .book-subtitle {
+            text-align: center;
+            color: var(--muted);
+            font-family:
+                Georgia,
+                "Times New Roman",
+                serif;
+            font-style: italic;
+            font-size: 1.2rem;
+            margin-bottom: 34px;
+        }
+
+        .ornament {
+            text-align: center;
+            color: var(--gold);
+            font-size: 1.4rem;
+            letter-spacing: 12px;
+            margin-bottom: 28px;
+        }
+
+        .card {
+            background:
+                rgba(
+                    255,
+                    253,
+                    248,
+                    0.94
+                );
+            border: 1px solid var(--line);
+            border-radius: 22px;
+            box-shadow: var(--shadow);
+            padding: 30px;
+            margin: 22px 0;
+        }
+
+        .question-label {
+            color: var(--muted);
+            font-size: 0.95rem;
+            margin-bottom: 12px;
+        }
+
+        #question {
+            font-family:
+                Georgia,
+                "Times New Roman",
+                serif;
+            font-size: clamp(
+                1.75rem,
+                4vw,
+                2.5rem
+            );
+            line-height: 1.28;
+        }
+
+        .main-actions {
+            text-align: center;
+            margin-top: 34px;
+        }
+
+        #recordButton {
+            width: 150px;
+            height: 150px;
+            border-radius: 50%;
+            border: none;
+            background: var(--green);
+            color: white;
+            box-shadow:
+                0 10px 28px
+                rgba(64, 92, 75, 0.25);
+            transition:
+                transform 0.15s ease,
+                background 0.15s ease;
+        }
+
+        #recordButton:hover {
+            transform: scale(1.03);
+        }
+
+        #recordButton.recording {
+            background: var(--wine);
+        }
+
+        .mic-icon {
+            display: block;
+            font-size: 3rem;
+            line-height: 1;
+        }
+
+        .mic-label {
+            display: block;
+            font-size: 1rem;
+            font-weight: bold;
+            margin-top: 8px;
+        }
+
+        #recordingFeedback {
+            display: none;
+            margin: 26px auto 8px;
+            text-align: center;
+        }
+
+        #recordingText {
+            font-size: 1.25rem;
+            font-weight: bold;
+            color: var(--wine);
+        }
+
+        #recordingTime {
+            margin-top: 5px;
+            font-variant-numeric:
+                tabular-nums;
+            color: var(--muted);
+        }
+
+        #audioMeter {
+            display: block;
+            width: min(
+                100%,
+                520px
+            );
+            height: 90px;
+            margin: 15px auto 0;
+        }
+
+        .secondary-button,
+        .action-button,
+        .quiet-button,
+        .danger-button {
+            border-radius: 13px;
+            padding: 15px 22px;
+            min-height: 58px;
+            border: 1px solid var(--line);
+        }
+
+        .secondary-button {
+            background: transparent;
+            color: var(--ink);
+            margin-top: 24px;
+        }
+
+        .action-button {
+            color: white;
+            background: var(--green);
+            border-color: var(--green);
+            font-weight: bold;
+        }
+
+        .action-button:hover {
+            background:
+                var(--green-dark);
+        }
+
+        .quiet-button {
+            background:
+                var(--paper-light);
+            color: var(--ink);
+        }
+
+        .danger-button {
+            background:
+                transparent;
+            color: var(--wine);
+            border-color: #bf9995;
+        }
+
+        .status {
+            text-align: center;
+            color: var(--muted);
+            min-height: 32px;
+            margin-top: 20px;
+            font-size: 1.05rem;
+        }
+
+        #processingBox {
+            display: none;
+            text-align: center;
+            padding: 35px 20px;
+        }
+
+        .thinking-dots {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin: 18px 0;
+        }
+
+        .thinking-dots span {
+            width: 13px;
+            height: 13px;
+            border-radius: 50%;
+            background: var(--gold);
+            animation:
+                thinking 1.2s infinite ease-in-out;
+        }
+
+        .thinking-dots span:nth-child(2) {
+            animation-delay: 0.15s;
+        }
+
+        .thinking-dots span:nth-child(3) {
+            animation-delay: 0.30s;
+        }
+
+        @keyframes thinking {
+            0%,
+            80%,
+            100% {
+                transform: scale(0.65);
+                opacity: 0.4;
+            }
+
+            40% {
+                transform: scale(1);
+                opacity: 1;
+            }
+        }
+
+        #reviewArea {
+            display: none;
+        }
+
+        .section-title {
+            font-family:
+                Georgia,
+                "Times New Roman",
+                serif;
+            font-size: 1.55rem;
+            margin-bottom: 14px;
+        }
+
+        .story-text {
+            font-family:
+                Georgia,
+                "Times New Roman",
+                serif;
+            font-size: 1.22rem;
+            line-height: 1.7;
+            white-space: pre-wrap;
+        }
+
+        .summary-text {
+            font-size: 1.1rem;
+            line-height: 1.65;
+        }
+
+        .review-question {
+            text-align: center;
+            font-family:
+                Georgia,
+                "Times New Roman",
+                serif;
+            font-size: 1.55rem;
+            margin-bottom: 20px;
+        }
+
+        .review-actions {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 12px;
+        }
+
+        .privacy-box {
+            background: #f8f2ea;
+            border: 2px solid #a17d60;
+        }
+
+        .privacy-title {
+            font-family:
+                Georgia,
+                "Times New Roman",
+                serif;
+            font-size: 1.45rem;
+            font-weight: bold;
+        }
+
+        .privacy-question {
+            font-size: 1.15rem;
+            margin: 15px 0;
+            line-height: 1.55;
+        }
+
+        .privacy-reason {
+            color: var(--muted);
+            line-height: 1.45;
+            margin-bottom: 20px;
+        }
+
+        #afterSaveArea {
+            display: none;
+        }
+
+        #followUpBox {
+            display: none;
+        }
+
+        .followup-text {
+            font-family:
+                Georgia,
+                "Times New Roman",
+                serif;
+            font-size: 1.5rem;
+            line-height: 1.45;
+            margin: 16px 0 20px;
+        }
+
+        #savedMessage {
+            display: none;
+            text-align: center;
+            font-size: 1.2rem;
+            padding: 20px;
+            color: var(--green);
+        }
+
+        #loginView {
+            max-width: 560px;
+            margin: 70px auto;
+            padding: 0 20px;
+        }
+
+        #loginBox {
+            background:
+                var(--paper-light);
+            border: 1px solid var(--line);
+            border-radius: 22px;
+            box-shadow: var(--shadow);
+            padding: 32px;
+        }
+
+        #loginBox h2 {
+            font-family:
+                Georgia,
+                "Times New Roman",
+                serif;
+            font-size: 2rem;
+            margin-top: 0;
+        }
+
+        label {
+            display: block;
+            font-weight: bold;
+            margin: 18px 0 8px;
         }
 
         input {
             width: 100%;
-            font-size: 20px;
-            padding: 14px;
-            margin: 8px 0 18px;
+            padding: 15px;
+            font-size: 1.1rem;
+            border: 1px solid #bfb3a4;
+            border-radius: 10px;
+            background: white;
         }
 
-        label {
-            font-size: 18px;
-            font-weight: bold;
-        }
-
-        #loginView {
-            max-width: 500px;
-            margin: 80px auto;
-        }
-
-        #loginBox {
-            border: 1px solid #ccc;
-            border-radius: 14px;
-            padding: 28px;
+        #loginButton {
+            width: 100%;
+            margin-top: 22px;
         }
 
         #loginMessage {
-            margin-top: 15px;
-            font-size: 17px;
+            margin-top: 18px;
         }
 
         #appView {
             display: none;
         }
 
-        #question {
-            font-size: 28px;
-            margin: 30px 0;
-        }
-
-        #status {
-            margin: 25px 0;
-            font-size: 18px;
-            min-height: 30px;
-        }
-
-        .box {
-            padding: 18px;
-            border: 1px solid #ccc;
-            margin-top: 12px;
-            font-size: 18px;
-            min-height: 60px;
-        }
-
-        .privacy-box {
-            margin-top: 25px;
-            padding: 22px;
-            border: 3px solid #444;
-            border-radius: 12px;
-            background: #f3f3f3;
-        }
-
-        .privacy-title {
-            font-size: 22px;
-            font-weight: bold;
-            margin-bottom: 10px;
-        }
-
-        .privacy-question {
-            font-size: 23px;
-            margin: 12px 0;
-        }
-
-        .privacy-reason {
-            font-size: 16px;
-            color: #555;
-            margin-bottom: 15px;
-        }
-
-        #followUpBox {
-            display: none;
-            margin-top: 25px;
-            padding: 20px;
-            border: 2px solid #999;
-            border-radius: 12px;
-        }
-
-        #followUpQuestion {
-            font-size: 24px;
-            margin: 10px 0 15px;
-        }
-
-        #userInfo {
-            font-size: 14px;
-            color: #777;
-            margin-bottom: 20px;
-        }
-
-        #debug {
-            margin-top: 25px;
-            color: #777;
-            font-size: 13px;
-        }
-
-        .small-button {
-            font-size: 14px;
-            padding: 8px 12px;
-        }
-
         #readerMessage {
             display: none;
-            padding: 25px;
-            border: 1px solid #ccc;
-            border-radius: 12px;
-            margin-top: 30px;
+        }
+
+        .footer {
+            text-align: center;
+            margin-top: 50px;
+            color: #9a9187;
+            font-size: 0.8rem;
+        }
+
+        .logout-button {
+            background: none;
+            border: none;
+            color: #9a9187;
+            text-decoration: underline;
+            font-size: 0.82rem;
+        }
+
+        @media (
+            max-width: 650px
+        ) {
+            .page {
+                padding:
+                    18px
+                    14px
+                    50px;
+            }
+
+            .card {
+                padding: 22px 19px;
+                border-radius: 18px;
+            }
+
+            #recordButton {
+                width: 138px;
+                height: 138px;
+            }
+
+            .review-actions {
+                display: grid;
+                grid-template-columns: 1fr;
+            }
+
+            .review-actions button {
+                width: 100%;
+            }
         }
     </style>
 </head>
@@ -154,9 +502,19 @@
 <body>
 
 
+<!-- =====================================================
+     LOGIN
+===================================================== -->
+
 <div id="loginView">
 
-    <h1>Papa erzählt</h1>
+    <div class="book-title">
+        Romans Erinnerungen
+    </div>
+
+    <div class="book-subtitle">
+        Geschichten aus einem langen Leben
+    </div>
 
     <div id="loginBox">
 
@@ -187,7 +545,10 @@
             autocomplete="current-password"
         >
 
-        <button id="loginButton">
+        <button
+            id="loginButton"
+            class="action-button"
+        >
             Anmelden
         </button>
 
@@ -198,95 +559,282 @@
 </div>
 
 
+<!-- =====================================================
+     APP
+===================================================== -->
+
 <div id="appView">
 
-    <h1>Papa erzählt</h1>
+    <main class="page">
 
-    <div id="userInfo">
-        Angemeldet
-    </div>
-
-
-    <div id="narratorView">
-
-        <div id="question">
-            Frage wird geladen ...
+        <div class="book-title">
+            Romans Erinnerungen
         </div>
 
-        <button id="recordButton">
-            🎙 Aufnahme starten
-        </button>
+        <div class="book-subtitle">
+            Erzähl uns ein Stück aus deinem Leben.
+        </div>
 
-        <button id="nextButton">
-            Andere Frage
-        </button>
-
-        <div id="status"></div>
-
-
-        <h3>Transkript</h3>
-
-        <div id="transcript" class="box">
-            Noch keine Aufnahme.
+        <div class="ornament">
+            · ❦ ·
         </div>
 
 
-        <h3>Zusammenfassung</h3>
+        <div id="narratorView">
 
-        <div id="summary" class="box">
-            Noch keine Auswertung.
+            <!-- FRAGE -->
+
+            <section
+                id="questionCard"
+                class="card"
+            >
+
+                <div class="question-label">
+                    Heute möchte ich dich fragen:
+                </div>
+
+                <div id="question">
+                    Frage wird geladen …
+                </div>
+
+
+                <div class="main-actions">
+
+                    <button id="recordButton">
+
+                        <span
+                            class="mic-icon"
+                            id="micIcon"
+                        >
+                            🎙
+                        </span>
+
+                        <span
+                            class="mic-label"
+                            id="micLabel"
+                        >
+                            Erzählen
+                        </span>
+
+                    </button>
+
+
+                    <div id="recordingFeedback">
+
+                        <div id="recordingText">
+                            Ich höre dir zu …
+                        </div>
+
+                        <div id="recordingTime">
+                            00:00
+                        </div>
+
+                        <canvas
+                            id="audioMeter"
+                            width="520"
+                            height="90"
+                        ></canvas>
+
+                    </div>
+
+
+                    <div>
+
+                        <button
+                            id="nextButton"
+                            class="secondary-button"
+                        >
+                            Neue Frage
+                        </button>
+
+                    </div>
+
+                </div>
+
+
+                <div
+                    id="status"
+                    class="status"
+                ></div>
+
+            </section>
+
+
+            <!-- VERARBEITUNG -->
+
+            <section
+                id="processingBox"
+                class="card"
+            >
+
+                <div class="section-title">
+                    Deine Erinnerung wird festgehalten
+                </div>
+
+                <div class="thinking-dots">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </div>
+
+                <div id="processingText">
+                    Einen kleinen Moment …
+                </div>
+
+            </section>
+
+
+            <!-- PRÜFEN -->
+
+            <div id="reviewArea">
+
+                <section class="card">
+
+                    <div class="section-title">
+                        Deine Erzählung
+                    </div>
+
+                    <div
+                        id="transcript"
+                        class="story-text"
+                    ></div>
+
+                </section>
+
+
+                <section class="card">
+
+                    <div class="section-title">
+                        Kurz festgehalten
+                    </div>
+
+                    <div
+                        id="summary"
+                        class="summary-text"
+                    ></div>
+
+                </section>
+
+
+                <section class="card">
+
+                    <div class="review-question">
+                        Ist die Erinnerung so in Ordnung?
+                    </div>
+
+                    <div class="review-actions">
+
+                        <button
+                            id="confirmButton"
+                            class="action-button"
+                        >
+                            ✓ So speichern
+                        </button>
+
+                        <button
+                            id="retryButton"
+                            class="quiet-button"
+                        >
+                            🎙 Noch einmal erzählen
+                        </button>
+
+                        <button
+                            id="discardButton"
+                            class="danger-button"
+                        >
+                            Verwerfen
+                        </button>
+
+                    </div>
+
+                </section>
+
+            </div>
+
+
+            <!-- NACH SPEICHERN -->
+
+            <div id="afterSaveArea">
+
+                <div
+                    id="savedMessage"
+                    class="card"
+                >
+                    ✓ Deine Erinnerung ist gespeichert.
+                </div>
+
+                <div id="privacyContainer"></div>
+
+
+                <section
+                    id="followUpBox"
+                    class="card"
+                >
+
+                    <div class="question-label">
+                        Dazu würde ich gerne noch etwas fragen:
+                    </div>
+
+                    <div
+                        id="followUpQuestion"
+                        class="followup-text"
+                    ></div>
+
+                    <div class="review-actions">
+
+                        <button
+                            id="followUpButton"
+                            class="action-button"
+                        >
+                            Darauf antworten
+                        </button>
+
+                        <button
+                            id="skipFollowUpButton"
+                            class="quiet-button"
+                        >
+                            Lieber weiter
+                        </button>
+
+                    </div>
+
+                </section>
+
+            </div>
+
         </div>
 
 
-        <div id="privacyContainer"></div>
-
-
-        <div id="followUpBox">
-
-            <strong>Eine Nachfrage:</strong>
-
-            <div id="followUpQuestion"></div>
-
-            <button id="followUpButton">
-                Darauf antworten
-            </button>
-
-            <button id="skipFollowUpButton">
-                Lieber neue Frage
-            </button>
-
-        </div>
-
-    </div>
-
-
-    <div id="readerMessage">
-
-        <h2>Familienarchiv</h2>
-
-        <p>
-            Die Leseansicht für Familienmitglieder
-            bauen wir später separat.
-        </p>
-
-    </div>
-
-
-    <div id="debug">
-        Version: render-v1
-    </div>
-
-
-    <div style="margin-top:40px;">
-
-        <button
-            id="logoutButton"
-            class="small-button"
+        <div
+            id="readerMessage"
+            class="card"
         >
-            Abmelden
-        </button>
+            <div class="section-title">
+                Romans Erinnerungen
+            </div>
 
-    </div>
+            <p>
+                Die Familien-Leseansicht kommt als Nächstes.
+            </p>
+        </div>
+
+
+        <footer class="footer">
+
+            <button
+                id="logoutButton"
+                class="logout-button"
+            >
+                Abmelden
+            </button>
+
+            <div>
+                Version: memories-v2
+            </div>
+
+        </footer>
+
+    </main>
 
 </div>
 
@@ -334,13 +882,24 @@ let currentAnswerId = null;
 let currentProfileId = null;
 let currentRole = null;
 
+let currentFollowUpQuestion = "";
+let currentPrivacySignal = false;
+let currentPrivacyReason = "";
+
 let mediaRecorder = null;
+let mediaStream = null;
 let audioChunks = [];
 
 let recordingMimeType = "";
 let recordingExtension = "webm";
 
-let currentFollowUpQuestion = "";
+let audioContext = null;
+let analyser = null;
+let analyserData = null;
+let meterAnimationId = null;
+
+let recordingStartedAt = null;
+let timerInterval = null;
 
 
 /* =========================================================
@@ -348,74 +907,173 @@ let currentFollowUpQuestion = "";
 ========================================================= */
 
 const loginView =
-    document.getElementById("loginView");
+    document.getElementById(
+        "loginView"
+    );
 
 const appView =
-    document.getElementById("appView");
+    document.getElementById(
+        "appView"
+    );
 
 const narratorView =
-    document.getElementById("narratorView");
+    document.getElementById(
+        "narratorView"
+    );
 
 const readerMessage =
-    document.getElementById("readerMessage");
+    document.getElementById(
+        "readerMessage"
+    );
 
 const emailInput =
-    document.getElementById("email");
+    document.getElementById(
+        "email"
+    );
 
 const passwordInput =
-    document.getElementById("password");
+    document.getElementById(
+        "password"
+    );
 
 const loginButton =
-    document.getElementById("loginButton");
+    document.getElementById(
+        "loginButton"
+    );
 
 const loginMessage =
-    document.getElementById("loginMessage");
+    document.getElementById(
+        "loginMessage"
+    );
 
 const logoutButton =
-    document.getElementById("logoutButton");
-
-const userInfo =
-    document.getElementById("userInfo");
+    document.getElementById(
+        "logoutButton"
+    );
 
 const questionElement =
-    document.getElementById("question");
+    document.getElementById(
+        "question"
+    );
+
+const questionCard =
+    document.getElementById(
+        "questionCard"
+    );
 
 const recordButton =
-    document.getElementById("recordButton");
+    document.getElementById(
+        "recordButton"
+    );
+
+const micLabel =
+    document.getElementById(
+        "micLabel"
+    );
 
 const nextButton =
-    document.getElementById("nextButton");
+    document.getElementById(
+        "nextButton"
+    );
 
 const statusElement =
-    document.getElementById("status");
+    document.getElementById(
+        "status"
+    );
+
+const recordingFeedback =
+    document.getElementById(
+        "recordingFeedback"
+    );
+
+const recordingTime =
+    document.getElementById(
+        "recordingTime"
+    );
+
+const audioMeter =
+    document.getElementById(
+        "audioMeter"
+    );
+
+const processingBox =
+    document.getElementById(
+        "processingBox"
+    );
+
+const processingText =
+    document.getElementById(
+        "processingText"
+    );
+
+const reviewArea =
+    document.getElementById(
+        "reviewArea"
+    );
 
 const transcriptElement =
-    document.getElementById("transcript");
+    document.getElementById(
+        "transcript"
+    );
 
 const summaryElement =
-    document.getElementById("summary");
+    document.getElementById(
+        "summary"
+    );
+
+const confirmButton =
+    document.getElementById(
+        "confirmButton"
+    );
+
+const retryButton =
+    document.getElementById(
+        "retryButton"
+    );
+
+const discardButton =
+    document.getElementById(
+        "discardButton"
+    );
+
+const afterSaveArea =
+    document.getElementById(
+        "afterSaveArea"
+    );
+
+const savedMessage =
+    document.getElementById(
+        "savedMessage"
+    );
 
 const privacyContainer =
-    document.getElementById("privacyContainer");
+    document.getElementById(
+        "privacyContainer"
+    );
 
 const followUpBox =
-    document.getElementById("followUpBox");
+    document.getElementById(
+        "followUpBox"
+    );
 
 const followUpQuestionElement =
-    document.getElementById("followUpQuestion");
+    document.getElementById(
+        "followUpQuestion"
+    );
 
 const followUpButton =
-    document.getElementById("followUpButton");
+    document.getElementById(
+        "followUpButton"
+    );
 
 const skipFollowUpButton =
-    document.getElementById("skipFollowUpButton");
-
-const debugElement =
-    document.getElementById("debug");
+    document.getElementById(
+        "skipFollowUpButton"
+    );
 
 
 /* =========================================================
-   BACKEND FETCH MIT LOGIN-TOKEN
+   API MIT LOGIN
 ========================================================= */
 
 async function apiFetch(
@@ -427,12 +1085,14 @@ async function apiFetch(
         data,
         error
     } =
-        await supabaseClient.auth
+        await supabaseClient
+            .auth
             .getSession();
 
 
     if (
-        error ||
+        error
+        ||
         !data.session
     ) {
 
@@ -444,10 +1104,6 @@ async function apiFetch(
     }
 
 
-    const token =
-        data.session.access_token;
-
-
     const headers =
         new Headers(
             options.headers || {}
@@ -456,7 +1112,7 @@ async function apiFetch(
 
     headers.set(
         "Authorization",
-        `Bearer ${token}`
+        `Bearer ${data.session.access_token}`
     );
 
 
@@ -477,7 +1133,7 @@ async function apiFetch(
         await forceLogin();
 
         throw new Error(
-            "Die Anmeldung ist abgelaufen. Bitte erneut anmelden."
+            "Bitte erneut anmelden."
         );
     }
 
@@ -493,19 +1149,21 @@ async function apiFetch(
 async function initializeAuth() {
 
     loginMessage.textContent =
-        "Anmeldung wird geprüft ...";
+        "Anmeldung wird geprüft …";
 
 
     const {
         data,
         error
     } =
-        await supabaseClient.auth
+        await supabaseClient
+            .auth
             .getSession();
 
 
     if (
-        error ||
+        error
+        ||
         !data.session
     ) {
 
@@ -571,7 +1229,8 @@ async function login() {
 
 
     if (
-        !email ||
+        !email
+        ||
         !password
     ) {
 
@@ -586,7 +1245,7 @@ async function login() {
         true;
 
     loginMessage.textContent =
-        "Anmeldung läuft ...";
+        "Anmeldung läuft …";
 
 
     try {
@@ -594,7 +1253,8 @@ async function login() {
         const {
             error
         } =
-            await supabaseClient.auth
+            await supabaseClient
+                .auth
                 .signInWithPassword({
                     email,
                     password
@@ -622,8 +1282,9 @@ async function login() {
         console.error(error);
 
         loginMessage.textContent =
-            "Anmeldung fehlgeschlagen: " +
-            error.message;
+            "Anmeldung fehlgeschlagen: "
+            + error.message;
+
     }
 
     finally {
@@ -691,28 +1352,8 @@ async function openApp() {
         "block";
 
 
-    userInfo.textContent =
-        `${me.display_name} · ${me.role}`;
-
-
     if (
         me.role === "reader"
-    ) {
-
-        narratorView.style.display =
-            "none";
-
-        readerMessage.style.display =
-            "block";
-
-        return;
-    }
-
-
-    if (
-        me.role !== "admin"
-        &&
-        me.role !== "narrator"
     ) {
 
         narratorView.style.display =
@@ -732,15 +1373,6 @@ async function openApp() {
         "none";
 
 
-    if (!currentProfileId) {
-
-        statusElement.textContent =
-            "Für diesen Benutzer ist noch kein Erzählerprofil eingerichtet.";
-
-        return;
-    }
-
-
     await loadQuestion();
 }
 
@@ -750,217 +1382,13 @@ async function logout() {
     await supabaseClient.auth
         .signOut();
 
-
     currentProfileId =
         null;
 
     currentRole =
         null;
 
-
-    resetView();
-
-
-    emailInput.value =
-        "";
-
-    passwordInput.value =
-        "";
-
-    loginMessage.textContent =
-        "";
-
-
     showLogin();
-}
-
-
-/* =========================================================
-   AUDIOFORMAT
-========================================================= */
-
-function selectRecordingFormat() {
-
-    const formats = [
-        {
-            mime:
-                "audio/webm;codecs=opus",
-
-            extension:
-                "webm"
-        },
-        {
-            mime:
-                "audio/webm",
-
-            extension:
-                "webm"
-        },
-        {
-            mime:
-                "audio/ogg;codecs=opus",
-
-            extension:
-                "ogg"
-        },
-        {
-            mime:
-                "audio/ogg",
-
-            extension:
-                "ogg"
-        }
-    ];
-
-
-    for (
-        const format
-        of formats
-    ) {
-
-        if (
-            MediaRecorder
-                .isTypeSupported(
-                    format.mime
-                )
-        ) {
-
-            return format;
-        }
-    }
-
-
-    return null;
-}
-
-
-/* =========================================================
-   PRIVACY
-========================================================= */
-
-function clearPrivacy() {
-
-    privacyContainer.innerHTML =
-        "";
-}
-
-
-function showPrivacy(
-    reason
-) {
-
-    clearPrivacy();
-
-
-    const box =
-        document.createElement(
-            "div"
-        );
-
-    box.className =
-        "privacy-box";
-
-
-    const title =
-        document.createElement(
-            "div"
-        );
-
-    title.className =
-        "privacy-title";
-
-    title.textContent =
-        "🔒 Vertraulichkeit erkannt";
-
-
-    const question =
-        document.createElement(
-            "div"
-        );
-
-    question.className =
-        "privacy-question";
-
-    question.textContent =
-        "Du hast angedeutet, dass diese Erinnerung vertraulich ist. Soll sie nur für die Familie sichtbar sein?";
-
-
-    const reasonElement =
-        document.createElement(
-            "div"
-        );
-
-    reasonElement.className =
-        "privacy-reason";
-
-    reasonElement.textContent =
-        reason ||
-        "Es wurde ein Vertraulichkeitswunsch erkannt.";
-
-
-    const familyButton =
-        document.createElement(
-            "button"
-        );
-
-    familyButton.textContent =
-        "🔒 Nur Familie";
-
-    familyButton.onclick =
-        () =>
-            setVisibility(
-                "family"
-            );
-
-
-    const allButton =
-        document.createElement(
-            "button"
-        );
-
-    allButton.textContent =
-        "Für Memoiren geeignet";
-
-    allButton.onclick =
-        () =>
-            setVisibility(
-                "all"
-            );
-
-
-    box.appendChild(
-        title
-    );
-
-    box.appendChild(
-        question
-    );
-
-    box.appendChild(
-        reasonElement
-    );
-
-    box.appendChild(
-        familyButton
-    );
-
-    box.appendChild(
-        allButton
-    );
-
-
-    privacyContainer.appendChild(
-        box
-    );
-
-
-    box.scrollIntoView({
-        behavior:
-            "smooth",
-
-        block:
-            "center"
-    });
 }
 
 
@@ -968,35 +1396,52 @@ function showPrivacy(
    RESET
 ========================================================= */
 
-function resetView() {
+function resetMemoryView() {
 
     currentAnswerId =
         null;
 
-    currentHistoryId =
-        null;
+    currentFollowUpQuestion =
+        "";
 
+    currentPrivacySignal =
+        false;
 
-    transcriptElement.textContent =
-        "Noch keine Aufnahme.";
+    currentPrivacyReason =
+        "";
 
-    summaryElement.textContent =
-        "Noch keine Auswertung.";
+    processingBox.style.display =
+        "none";
 
+    reviewArea.style.display =
+        "none";
 
-    clearPrivacy();
-
+    afterSaveArea.style.display =
+        "none";
 
     followUpBox.style.display =
         "none";
 
+    savedMessage.style.display =
+        "none";
 
-    currentFollowUpQuestion =
+    privacyContainer.innerHTML =
         "";
 
+    transcriptElement.textContent =
+        "";
 
-    debugElement.textContent =
-        "Version: render-v1";
+    summaryElement.textContent =
+        "";
+
+    questionCard.style.display =
+        "block";
+
+    nextButton.style.display =
+        "inline-block";
+
+    statusElement.textContent =
+        "";
 }
 
 
@@ -1008,11 +1453,10 @@ async function loadQuestion() {
 
     try {
 
-        resetView();
-
+        resetMemoryView();
 
         statusElement.textContent =
-            "Frage wird geladen ...";
+            "Eine Frage wird ausgesucht …";
 
 
         const response =
@@ -1051,16 +1495,506 @@ async function loadQuestion() {
 
         console.error(error);
 
-
         statusElement.textContent =
-            "Fehler: " +
-            error.message;
+            "Etwas hat nicht geklappt: "
+            + error.message;
     }
 }
 
 
 /* =========================================================
-   ANTWORT ANLEGEN
+   FORMAT
+========================================================= */
+
+function selectRecordingFormat() {
+
+    const formats = [
+        {
+            mime:
+                "audio/webm;codecs=opus",
+            extension:
+                "webm"
+        },
+        {
+            mime:
+                "audio/webm",
+            extension:
+                "webm"
+        },
+        {
+            mime:
+                "audio/ogg;codecs=opus",
+            extension:
+                "ogg"
+        },
+        {
+            mime:
+                "audio/ogg",
+            extension:
+                "ogg"
+        }
+    ];
+
+
+    for (
+        const format
+        of formats
+    ) {
+
+        if (
+            MediaRecorder
+                .isTypeSupported(
+                    format.mime
+                )
+        ) {
+
+            return format;
+        }
+    }
+
+
+    return null;
+}
+
+
+/* =========================================================
+   AUDIOPEGEL
+========================================================= */
+
+function startAudioMeter(
+    stream
+) {
+
+    audioContext =
+        new (
+            window.AudioContext
+            ||
+            window.webkitAudioContext
+        )();
+
+
+    const source =
+        audioContext
+            .createMediaStreamSource(
+                stream
+            );
+
+
+    analyser =
+        audioContext
+            .createAnalyser();
+
+
+    analyser.fftSize =
+        256;
+
+
+    source.connect(
+        analyser
+    );
+
+
+    analyserData =
+        new Uint8Array(
+            analyser.frequencyBinCount
+        );
+
+
+    drawAudioMeter();
+}
+
+
+function drawAudioMeter() {
+
+    if (!analyser) {
+        return;
+    }
+
+
+    analyser.getByteFrequencyData(
+        analyserData
+    );
+
+
+    const ctx =
+        audioMeter.getContext(
+            "2d"
+        );
+
+
+    const width =
+        audioMeter.width;
+
+    const height =
+        audioMeter.height;
+
+
+    ctx.clearRect(
+        0,
+        0,
+        width,
+        height
+    );
+
+
+    const bars = 32;
+
+    const step =
+        Math.floor(
+            analyserData.length
+            / bars
+        );
+
+
+    const gap = 6;
+
+    const barWidth =
+        (
+            width
+            - gap * (
+                bars - 1
+            )
+        )
+        / bars;
+
+
+    for (
+        let i = 0;
+        i < bars;
+        i++
+    ) {
+
+        const value =
+            analyserData[
+                i * step
+            ] / 255;
+
+
+        const barHeight =
+            Math.max(
+                6,
+                value * height
+            );
+
+
+        const x =
+            i * (
+                barWidth
+                + gap
+            );
+
+
+        const y =
+            (
+                height
+                - barHeight
+            ) / 2;
+
+
+        ctx.fillStyle =
+            value > 0.45
+                ? "#7d4945"
+                : "#b18a4b";
+
+
+        ctx.beginPath();
+
+        ctx.roundRect(
+            x,
+            y,
+            barWidth,
+            barHeight,
+            5
+        );
+
+        ctx.fill();
+    }
+
+
+    meterAnimationId =
+        requestAnimationFrame(
+            drawAudioMeter
+        );
+}
+
+
+async function stopAudioMeter() {
+
+    if (
+        meterAnimationId
+    ) {
+
+        cancelAnimationFrame(
+            meterAnimationId
+        );
+    }
+
+
+    meterAnimationId =
+        null;
+
+    analyser =
+        null;
+
+
+    if (audioContext) {
+
+        try {
+            await audioContext.close();
+        }
+        catch (_) {
+        }
+    }
+
+
+    audioContext =
+        null;
+}
+
+
+/* =========================================================
+   TIMER
+========================================================= */
+
+function startTimer() {
+
+    recordingStartedAt =
+        Date.now();
+
+
+    recordingTime.textContent =
+        "00:00";
+
+
+    timerInterval =
+        setInterval(
+            () => {
+
+                const seconds =
+                    Math.floor(
+                        (
+                            Date.now()
+                            - recordingStartedAt
+                        )
+                        / 1000
+                    );
+
+
+                const minutes =
+                    Math.floor(
+                        seconds
+                        / 60
+                    );
+
+
+                const rest =
+                    seconds % 60;
+
+
+                recordingTime.textContent =
+                    String(
+                        minutes
+                    ).padStart(
+                        2,
+                        "0"
+                    )
+                    + ":"
+                    + String(
+                        rest
+                    ).padStart(
+                        2,
+                        "0"
+                    );
+
+            },
+            500
+        );
+}
+
+
+function stopTimer() {
+
+    if (
+        timerInterval
+    ) {
+
+        clearInterval(
+            timerInterval
+        );
+    }
+
+
+    timerInterval =
+        null;
+}
+
+
+/* =========================================================
+   AUFNAHME
+========================================================= */
+
+async function startRecording() {
+
+    try {
+
+        const format =
+            selectRecordingFormat();
+
+
+        if (!format) {
+
+            throw new Error(
+                "Dieses Gerät unterstützt die Sprachaufnahme leider nicht."
+            );
+        }
+
+
+        recordingMimeType =
+            format.mime;
+
+        recordingExtension =
+            format.extension;
+
+
+        mediaStream =
+            await navigator
+                .mediaDevices
+                .getUserMedia({
+                    audio: true
+                });
+
+
+        mediaRecorder =
+            new MediaRecorder(
+                mediaStream,
+                {
+                    mimeType:
+                        recordingMimeType,
+
+                    audioBitsPerSecond:
+                        128000
+                }
+            );
+
+
+        audioChunks =
+            [];
+
+
+        mediaRecorder.ondataavailable =
+            event => {
+
+                if (
+                    event.data
+                    &&
+                    event.data.size > 0
+                ) {
+
+                    audioChunks.push(
+                        event.data
+                    );
+                }
+            };
+
+
+        mediaRecorder.onstop =
+            handleFinishedRecording;
+
+
+        mediaRecorder.start();
+
+
+        recordButton.classList.add(
+            "recording"
+        );
+
+
+        micLabel.textContent =
+            "Fertig";
+
+
+        recordingFeedback.style.display =
+            "block";
+
+
+        nextButton.style.display =
+            "none";
+
+
+        statusElement.textContent =
+            "";
+
+
+        startAudioMeter(
+            mediaStream
+        );
+
+
+        startTimer();
+
+    }
+
+    catch (error) {
+
+        console.error(error);
+
+        statusElement.textContent =
+            error.message;
+    }
+}
+
+
+async function stopRecording() {
+
+    if (
+        !mediaRecorder
+        ||
+        mediaRecorder.state
+        === "inactive"
+    ) {
+        return;
+    }
+
+
+    mediaRecorder.stop();
+
+
+    if (
+        mediaStream
+    ) {
+
+        mediaStream
+            .getTracks()
+            .forEach(
+                track =>
+                    track.stop()
+            );
+    }
+
+
+    stopTimer();
+
+    await stopAudioMeter();
+
+
+    recordButton
+        .classList
+        .remove(
+            "recording"
+        );
+
+
+    micLabel.textContent =
+        "Erzählen";
+
+
+    recordingFeedback.style.display =
+        "none";
+}
+
+
+/* =========================================================
+   ANTWORT ERZEUGEN
 ========================================================= */
 
 async function createEmptyAnswer() {
@@ -1097,7 +2031,7 @@ async function createEmptyAnswer() {
 
         throw new Error(
             data.detail ||
-            "Antwort konnte nicht angelegt werden."
+            "Die Erinnerung konnte nicht angelegt werden."
         );
     }
 
@@ -1108,159 +2042,41 @@ async function createEmptyAnswer() {
 
 
 /* =========================================================
-   AUFNAHME STARTEN
+   NACH AUFNAHME
 ========================================================= */
 
-async function startRecording() {
+async function handleFinishedRecording() {
 
     try {
 
-        const format =
-            selectRecordingFormat();
+        questionCard.style.display =
+            "none";
 
 
-        if (!format) {
-
-            throw new Error(
-                "Kein geeignetes Audioformat verfügbar."
-            );
-        }
+        processingBox.style.display =
+            "block";
 
 
-        recordingMimeType =
-            format.mime;
-
-        recordingExtension =
-            format.extension;
+        processingText.textContent =
+            "Deine Aufnahme wird gespeichert …";
 
 
-        const stream =
-            await navigator
-                .mediaDevices
-                .getUserMedia({
-                    audio:
-                        true
-                });
-
-
-        mediaRecorder =
-            new MediaRecorder(
-                stream,
-                {
-                    mimeType:
-                        recordingMimeType,
-
-                    audioBitsPerSecond:
-                        128000
-                }
-            );
-
-
-        audioChunks =
-            [];
-
-
-        mediaRecorder.ondataavailable =
-            event => {
-
-                if (
-                    event.data &&
-                    event.data.size > 0
-                ) {
-
-                    audioChunks.push(
-                        event.data
-                    );
-                }
-            };
-
-
-        mediaRecorder.onstop =
-            uploadRecording;
-
-
-        mediaRecorder.start();
-
-
-        recordButton.textContent =
-            "⏹ Aufnahme stoppen";
-
-
-        statusElement.textContent =
-            "Aufnahme läuft ...";
-
-    }
-
-    catch (error) {
-
-        console.error(error);
-
-
-        statusElement.textContent =
-            error.message;
-    }
-}
-
-
-/* =========================================================
-   AUFNAHME STOPPEN
-========================================================= */
-
-function stopRecording() {
-
-    if (
-        mediaRecorder &&
-        mediaRecorder.state !== "inactive"
-    ) {
-
-        mediaRecorder.stop();
-
-
-        mediaRecorder.stream
-            .getTracks()
-            .forEach(
-                track =>
-                    track.stop()
-            );
-    }
-
-
-    recordButton.textContent =
-        "🎙 Aufnahme starten";
-}
-
-
-/* =========================================================
-   AUDIO UPLOAD
-========================================================= */
-
-async function uploadRecording() {
-
-    try {
-
-        statusElement.textContent =
-            "Audio wird gespeichert ...";
-
-
-        clearPrivacy();
-
-
-        if (!audioChunks.length) {
+        if (
+            !audioChunks.length
+        ) {
 
             throw new Error(
-                "Keine Aufnahme vorhanden."
+                "Es wurde keine Sprache aufgenommen."
             );
         }
 
 
-        if (!currentAnswerId) {
-
-            await createEmptyAnswer();
-        }
+        await createEmptyAnswer();
 
 
         const actualMimeType =
-            mediaRecorder.mimeType ||
+            mediaRecorder.mimeType
+            ||
             recordingMimeType;
 
 
@@ -1272,15 +2088,6 @@ async function uploadRecording() {
                         actualMimeType
                 }
             );
-
-
-        debugElement.textContent =
-            `Version: render-v1 | Audio: ${
-                Math.round(
-                    audioBlob.size
-                    / 1024
-                )
-            } KB`;
 
 
         const formData =
@@ -1300,7 +2107,7 @@ async function uploadRecording() {
         );
 
 
-        const response =
+        const uploadResponse =
             await apiFetch(
                 "/audio/upload",
                 {
@@ -1313,24 +2120,117 @@ async function uploadRecording() {
             );
 
 
-        const data =
-            await response.json();
+        const uploadData =
+            await uploadResponse.json();
 
 
-        if (!response.ok) {
+        if (!uploadResponse.ok) {
 
             throw new Error(
-                data.detail ||
-                "Audio-Upload fehlgeschlagen."
+                uploadData.detail ||
+                "Die Aufnahme konnte nicht gespeichert werden."
             );
         }
 
 
-        statusElement.textContent =
-            "Audio gespeichert – Text wird erkannt ...";
+        processingText.textContent =
+            "Ich schreibe deine Erzählung auf …";
 
 
-        await transcribe();
+        const transcribeResponse =
+            await apiFetch(
+                `/answer/${currentAnswerId}/transcribe`,
+                {
+                    method:
+                        "POST"
+                }
+            );
+
+
+        const transcribeData =
+            await transcribeResponse.json();
+
+
+        if (!transcribeResponse.ok) {
+
+            throw new Error(
+                transcribeData.detail ||
+                "Die Sprache konnte nicht erkannt werden."
+            );
+        }
+
+
+        transcriptElement.textContent =
+            transcribeData.transcript
+            ||
+            "(Es wurde kein Text erkannt.)";
+
+
+        processingText.textContent =
+            "Ich fasse die Erinnerung kurz zusammen …";
+
+
+        const analyzeResponse =
+            await apiFetch(
+                `/answer/${currentAnswerId}/analyze`,
+                {
+                    method:
+                        "POST"
+                }
+            );
+
+
+        const analyzeData =
+            await analyzeResponse.json();
+
+
+        if (!analyzeResponse.ok) {
+
+            throw new Error(
+                analyzeData.detail ||
+                "Die Erinnerung konnte nicht ausgewertet werden."
+            );
+        }
+
+
+        summaryElement.textContent =
+            analyzeData.memory?.summary
+            ||
+            "Keine Zusammenfassung vorhanden.";
+
+
+        currentFollowUpQuestion =
+            analyzeData.follow_up_question
+            ||
+            "";
+
+
+        currentPrivacySignal =
+            analyzeData.privacy_signal
+            === true;
+
+
+        currentPrivacyReason =
+            analyzeData.privacy_reason
+            ||
+            "";
+
+
+        processingBox.style.display =
+            "none";
+
+
+        reviewArea.style.display =
+            "block";
+
+
+        reviewArea.scrollIntoView({
+            behavior:
+                "smooth",
+
+            block:
+                "start"
+        });
 
     }
 
@@ -1339,25 +2239,56 @@ async function uploadRecording() {
         console.error(error);
 
 
+        processingBox.style.display =
+            "none";
+
+
+        questionCard.style.display =
+            "block";
+
+
+        nextButton.style.display =
+            "inline-block";
+
+
         statusElement.textContent =
-            "Fehler: " +
-            error.message;
+            "Das hat leider nicht geklappt: "
+            + error.message;
     }
 }
 
 
 /* =========================================================
-   TRANSKRIPTION
+   ENTWURF VERWERFEN
 ========================================================= */
 
-async function transcribe() {
+async function discardCurrentAnswer() {
+
+    if (
+        !currentAnswerId
+    ) {
+
+        return;
+    }
+
 
     const response =
         await apiFetch(
-            `/answer/${currentAnswerId}/transcribe`,
+            `/answer/${currentAnswerId}/discard`,
             {
                 method:
-                    "POST"
+                    "POST",
+
+                headers: {
+                    "Content-Type":
+                        "application/json"
+                },
+
+                body:
+                    JSON.stringify({
+                        history_id:
+                            currentHistoryId
+                    })
             }
         );
 
@@ -1370,129 +2301,64 @@ async function transcribe() {
 
         throw new Error(
             data.detail ||
-            "Transkription fehlgeschlagen."
+            "Die Aufnahme konnte nicht verworfen werden."
         );
     }
 
 
-    transcriptElement.textContent =
-        data.transcript ||
-        "(kein Text erkannt)";
-
-
-    summaryElement.textContent =
-        "Die Erinnerung wird gerade ausgewertet …";
-
-
-    statusElement.textContent =
-        "Gespeichert. Auswertung läuft noch …";
-
-
-    await new Promise(
-        resolve =>
-            requestAnimationFrame(
-                () =>
-                    requestAnimationFrame(
-                        resolve
-                    )
-            )
-    );
-
-
-    await analyze();
+    currentAnswerId =
+        null;
 }
 
 
 /* =========================================================
-   ANALYSE
+   NOCH EINMAL AUFNEHMEN
 ========================================================= */
 
-async function analyze() {
+async function retryRecording() {
 
     try {
 
-        const response =
-            await apiFetch(
-                `/answer/${currentAnswerId}/analyze`,
-                {
-                    method:
-                        "POST"
-                }
-            );
+        retryButton.disabled =
+            true;
 
 
-        const data =
-            await response.json();
+        await discardCurrentAnswer();
 
 
-        console.log(
-            "Analyse:",
-            data
-        );
+        reviewArea.style.display =
+            "none";
 
 
-        if (!response.ok) {
-
-            throw new Error(
-                data.detail ||
-                "KI-Auswertung fehlgeschlagen."
-            );
-        }
+        questionCard.style.display =
+            "block";
 
 
-        summaryElement.textContent =
-            data.memory?.summary ||
-            "Keine Zusammenfassung erzeugt.";
+        nextButton.style.display =
+            "inline-block";
 
 
-        if (
-            data.privacy_signal === true
-        ) {
-
-            showPrivacy(
-                data.privacy_reason
-            );
-
-
-            statusElement.textContent =
-                "Bitte entscheide kurz über die Vertraulichkeit.";
-
-        }
-
-        else {
-
-            clearPrivacy();
-
-
-            statusElement.textContent =
-                "Fertig gespeichert.";
-        }
-
-
-        currentFollowUpQuestion =
-            data.follow_up_question ||
+        transcriptElement.textContent =
             "";
 
 
-        if (
-            currentFollowUpQuestion
-        ) {
-
-            followUpQuestionElement
-                .textContent =
-                    currentFollowUpQuestion;
+        summaryElement.textContent =
+            "";
 
 
-            followUpBox.style.display =
-                "block";
+        statusElement.textContent =
+            "Kein Problem. Erzähl es einfach noch einmal.";
 
-        }
 
-        else {
+        setTimeout(
+            () => {
 
-            followUpBox.style.display =
-                "none";
-        }
+                statusElement.textContent =
+                    "";
+
+            },
+            2500
+        );
 
     }
 
@@ -1500,20 +2366,283 @@ async function analyze() {
 
         console.error(error);
 
-
-        summaryElement.textContent =
-            "Die automatische Auswertung ist fehlgeschlagen.";
-
-
         statusElement.textContent =
-            "Die Erinnerung selbst wurde trotzdem gespeichert.";
+            error.message;
+
+    }
+
+    finally {
+
+        retryButton.disabled =
+            false;
     }
 }
 
 
 /* =========================================================
-   SICHTBARKEIT
+   VERWERFEN
 ========================================================= */
+
+async function discardMemory() {
+
+    try {
+
+        discardButton.disabled =
+            true;
+
+
+        await discardCurrentAnswer();
+
+
+        resetMemoryView();
+
+
+        statusElement.textContent =
+            "Die Aufnahme wurde verworfen.";
+
+
+        setTimeout(
+            () => {
+
+                statusElement.textContent =
+                    "";
+
+            },
+            2500
+        );
+
+    }
+
+    catch (error) {
+
+        console.error(error);
+
+        statusElement.textContent =
+            error.message;
+
+    }
+
+    finally {
+
+        discardButton.disabled =
+            false;
+    }
+}
+
+
+/* =========================================================
+   SPEICHERN BESTÄTIGEN
+========================================================= */
+
+function confirmMemory() {
+
+    reviewArea.style.display =
+        "none";
+
+
+    afterSaveArea.style.display =
+        "block";
+
+
+    savedMessage.style.display =
+        "block";
+
+
+    if (
+        currentPrivacySignal
+    ) {
+
+        showPrivacy(
+            currentPrivacyReason
+        );
+    }
+
+
+    if (
+        currentFollowUpQuestion
+    ) {
+
+        followUpQuestionElement
+            .textContent =
+                currentFollowUpQuestion;
+
+
+        followUpBox.style.display =
+            "block";
+
+    }
+
+    else {
+
+        followUpBox.style.display =
+            "none";
+    }
+
+
+    afterSaveArea.scrollIntoView({
+        behavior:
+            "smooth",
+
+        block:
+            "start"
+    });
+}
+
+
+/* =========================================================
+   PRIVACY
+========================================================= */
+
+function showPrivacy(
+    reason
+) {
+
+    privacyContainer.innerHTML =
+        "";
+
+
+    const box =
+        document.createElement(
+            "section"
+        );
+
+
+    box.className =
+        "card privacy-box";
+
+
+    const title =
+        document.createElement(
+            "div"
+        );
+
+
+    title.className =
+        "privacy-title";
+
+
+    title.textContent =
+        "🔒 Diese Erinnerung klingt vertraulich";
+
+
+    const question =
+        document.createElement(
+            "div"
+        );
+
+
+    question.className =
+        "privacy-question";
+
+
+    question.textContent =
+        "Soll diese Erinnerung nur in der Familie bleiben?";
+
+
+    const reasonElement =
+        document.createElement(
+            "div"
+        );
+
+
+    reasonElement.className =
+        "privacy-reason";
+
+
+    reasonElement.textContent =
+        reason;
+
+
+    const actions =
+        document.createElement(
+            "div"
+        );
+
+
+    actions.className =
+        "review-actions";
+
+
+    const familyButton =
+        document.createElement(
+            "button"
+        );
+
+
+    familyButton.className =
+        "action-button";
+
+
+    familyButton.textContent =
+        "🔒 Nur für die Familie";
+
+
+    familyButton.onclick =
+        () =>
+            setVisibility(
+                "family"
+            );
+
+
+    const memoirButton =
+        document.createElement(
+            "button"
+        );
+
+
+    memoirButton.className =
+        "quiet-button";
+
+
+    memoirButton.textContent =
+        "Darf ins Erinnerungsbuch";
+
+
+    memoirButton.onclick =
+        () =>
+            setVisibility(
+                "all"
+            );
+
+
+    actions.appendChild(
+        familyButton
+    );
+
+
+    actions.appendChild(
+        memoirButton
+    );
+
+
+    box.appendChild(
+        title
+    );
+
+
+    box.appendChild(
+        question
+    );
+
+
+    if (reason) {
+
+        box.appendChild(
+            reasonElement
+        );
+    }
+
+
+    box.appendChild(
+        actions
+    );
+
+
+    privacyContainer.appendChild(
+        box
+    );
+}
+
 
 async function setVisibility(
     visibility
@@ -1549,27 +2678,28 @@ async function setVisibility(
 
             throw new Error(
                 data.detail ||
-                "Sichtbarkeit konnte nicht geändert werden."
+                "Die Auswahl konnte nicht gespeichert werden."
             );
         }
 
 
-        clearPrivacy();
+        privacyContainer.innerHTML =
+            "";
 
 
         if (
             visibility === "family"
         ) {
 
-            statusElement.textContent =
-                "🔒 Diese Erinnerung bleibt im Familienarchiv.";
+            savedMessage.textContent =
+                "🔒 Gespeichert – diese Erinnerung bleibt in der Familie.";
 
         }
 
         else {
 
-            statusElement.textContent =
-                "Diese Erinnerung darf später für die Memoiren berücksichtigt werden.";
+            savedMessage.textContent =
+                "✓ Gespeichert – diese Erinnerung darf auch für spätere Memoiren verwendet werden.";
         }
 
     }
@@ -1578,10 +2708,8 @@ async function setVisibility(
 
         console.error(error);
 
-
-        statusElement.textContent =
-            "Fehler: " +
-            error.message;
+        savedMessage.textContent =
+            "Die Auswahl konnte leider nicht gespeichert werden.";
     }
 }
 
@@ -1596,10 +2724,6 @@ async function activateFollowUp() {
 
         const parentAnswerId =
             currentAnswerId;
-
-
-        statusElement.textContent =
-            "Nachfrage wird vorbereitet ...";
 
 
         const response =
@@ -1637,7 +2761,7 @@ async function activateFollowUp() {
 
             throw new Error(
                 data.detail ||
-                "Nachfrage konnte nicht gespeichert werden."
+                "Die Nachfrage konnte nicht vorbereitet werden."
             );
         }
 
@@ -1646,35 +2770,21 @@ async function activateFollowUp() {
             data.history_id;
 
 
-        currentAnswerId =
-            null;
+        resetMemoryView();
 
 
         questionElement.textContent =
             data.question.text;
 
 
-        transcriptElement.textContent =
-            "Noch keine Aufnahme.";
-
-
-        summaryElement.textContent =
-            "Noch keine Auswertung.";
-
-
-        clearPrivacy();
-
-
-        followUpBox.style.display =
-            "none";
-
-
-        currentFollowUpQuestion =
-            "";
-
-
         statusElement.textContent =
-            "Du kannst jetzt auf die Nachfrage antworten.";
+            "Wenn du möchtest, erzähl einfach weiter.";
+
+
+        window.scrollTo({
+            top: 0,
+            behavior: "smooth"
+        });
 
     }
 
@@ -1682,9 +2792,7 @@ async function activateFollowUp() {
 
         console.error(error);
 
-
-        statusElement.textContent =
-            "Fehler: " +
+        savedMessage.textContent =
             error.message;
     }
 }
@@ -1725,8 +2833,10 @@ recordButton.addEventListener(
     async () => {
 
         if (
-            !mediaRecorder ||
-            mediaRecorder.state === "inactive"
+            !mediaRecorder
+            ||
+            mediaRecorder.state
+            === "inactive"
         ) {
 
             await startRecording();
@@ -1735,7 +2845,7 @@ recordButton.addEventListener(
 
         else {
 
-            stopRecording();
+            await stopRecording();
         }
     }
 );
@@ -1744,6 +2854,24 @@ recordButton.addEventListener(
 nextButton.addEventListener(
     "click",
     loadQuestion
+);
+
+
+confirmButton.addEventListener(
+    "click",
+    confirmMemory
+);
+
+
+retryButton.addEventListener(
+    "click",
+    retryRecording
+);
+
+
+discardButton.addEventListener(
+    "click",
+    discardMemory
 );
 
 
