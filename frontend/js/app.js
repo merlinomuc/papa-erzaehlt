@@ -24,6 +24,8 @@ let currentHistoryId = null;
 let currentAnswerId = null;
 
 let currentFollowUpQuestion = "";
+let currentIdentityCandidateId = null;
+let currentIdentityQuestion = false;
 let currentPrivacySignal = false;
 let currentPrivacyReason = "";
 
@@ -47,6 +49,12 @@ let meterAnimationId = null;
 
 let timerInterval = null;
 let recordingStartedAt = null;
+
+let supplementRecorder = null;
+let supplementStream = null;
+let supplementChunks = [];
+let supplementMimeType = "";
+let supplementExtension = "webm";
 
 const startupView = document.getElementById("startupView");
 const loginView = document.getElementById("loginView");
@@ -138,6 +146,18 @@ const timelineYearInput = document.getElementById("timelineYearInput");
 const timelineLabelInput = document.getElementById("timelineLabelInput");
 const timelineConfidenceInput = document.getElementById("timelineConfidenceInput");
 const saveTimelineButton = document.getElementById("saveTimelineButton");
+
+let memoryToolsContainer = null;
+let editTranscriptButton = null;
+let transcriptEditPanel = null;
+let transcriptEditTextarea = null;
+let saveTranscriptButton = null;
+let cancelTranscriptEditButton = null;
+let supplementPanel = null;
+let supplementTextarea = null;
+let saveSupplementButton = null;
+let recordSupplementButton = null;
+let supplementStatus = null;
 
 function showScreen(screen) {
   screens.forEach(item => item.classList.remove("active"));
@@ -289,6 +309,8 @@ function showHome() {
 function resetStoryState() {
   currentAnswerId = null;
   currentFollowUpQuestion = "";
+  currentIdentityCandidateId = null;
+  currentIdentityQuestion = false;
   currentPrivacySignal = false;
   currentPrivacyReason = "";
   currentTimelineYear = null;
@@ -807,6 +829,13 @@ async function handleFinishedRecording() {
       analyzeData.follow_up_question ||
       "";
 
+    currentIdentityCandidateId =
+      analyzeData.identity_candidates?.[0]?.id ||
+      null;
+
+    currentIdentityQuestion =
+      Boolean(currentIdentityCandidateId);
+
     currentPrivacySignal =
       analyzeData.privacy_signal === true;
 
@@ -945,7 +974,71 @@ function confirmMemory() {
     followUpQuestionElement.textContent =
       currentFollowUpQuestion;
 
+    if (currentIdentityQuestion && currentIdentityCandidateId) {
+      followUpButton.textContent = "Ja, das ist dieselbe Person";
+      skipFollowUpButton.textContent = "Nein, jemand anderes";
+      followUpButton.onclick = () => resolveCurrentIdentity(true);
+      skipFollowUpButton.onclick = () => resolveCurrentIdentity(false);
+    } else {
+      followUpButton.textContent = "Ja, erzähl weiter";
+      skipFollowUpButton.textContent = "Lieber etwas Neues";
+      followUpButton.onclick = activateFollowUp;
+      skipFollowUpButton.onclick = showHome;
+    }
+
     followUpBox.classList.remove("hidden");
+  } else {
+    followUpButton.textContent = "Ja, erzähl weiter";
+    skipFollowUpButton.textContent = "Lieber etwas Neues";
+    followUpButton.onclick = activateFollowUp;
+    skipFollowUpButton.onclick = showHome;
+  }
+}
+
+async function resolveCurrentIdentity(samePerson) {
+  if (!currentIdentityCandidateId) return;
+
+  const candidateId = currentIdentityCandidateId;
+  followUpButton.disabled = true;
+  skipFollowUpButton.disabled = true;
+
+  try {
+    const response = await apiFetch(
+      `/person-identity/${candidateId}/resolve`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          same_person: samePerson
+        })
+      }
+    );
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(
+        data.detail ||
+        "Die Person konnte nicht zugeordnet werden."
+      );
+    }
+
+    currentIdentityCandidateId = null;
+    currentIdentityQuestion = false;
+    currentFollowUpQuestion = "";
+    followUpBox.classList.add("hidden");
+
+    savedMessage.textContent = samePerson
+      ? "Gespeichert · die Erinnerungen zu dieser Person sind jetzt miteinander verbunden."
+      : "Gespeichert · diese Person bleibt als eigene Person erhalten.";
+  } catch (error) {
+    console.error(error);
+    savedMessage.textContent = error.message;
+  } finally {
+    followUpButton.disabled = false;
+    skipFollowUpButton.disabled = false;
   }
 }
 
@@ -1430,6 +1523,350 @@ function renderTimeline() {
   }
 }
 
+
+function ensureMemoryToolsUI() {
+  if (memoryToolsContainer) return;
+
+  memoryToolsContainer = document.createElement("section");
+  memoryToolsContainer.className = "memory-tools";
+
+  memoryToolsContainer.innerHTML = `
+    <div class="memory-tools-heading">
+      <div class="eyebrow">Erinnerung verfeinern</div>
+      <h3>Etwas korrigieren oder ergänzen</h3>
+      <p>
+        Das Original bleibt immer erhalten. Änderungen werden als neue Version
+        oder als Ergänzung gespeichert.
+      </p>
+    </div>
+
+    <div class="memory-tool-actions">
+      <button id="editTranscriptButton" class="outline-button">Text korrigieren</button>
+      <button id="openSupplementButton" class="outline-button">Etwas ergänzen</button>
+    </div>
+
+    <div id="transcriptEditPanel" class="memory-tool-panel hidden">
+      <label for="transcriptEditTextarea">Korrigierte Fassung</label>
+      <textarea id="transcriptEditTextarea" rows="9"></textarea>
+      <div class="memory-tool-button-row">
+        <button id="saveTranscriptButton" class="gold-button">Korrektur speichern</button>
+        <button id="cancelTranscriptEditButton" class="text-button">Abbrechen</button>
+      </div>
+    </div>
+
+    <div id="supplementPanel" class="memory-tool-panel hidden">
+      <label for="supplementTextarea">Was möchtest du präzisieren oder ergänzen?</label>
+      <textarea id="supplementTextarea" rows="5" placeholder="Zum Beispiel: Mir ist noch eingefallen, dass …"></textarea>
+      <div class="memory-tool-button-row">
+        <button id="saveSupplementButton" class="gold-button">Ergänzung speichern</button>
+        <button id="recordSupplementButton" class="outline-button">Ergänzung sprechen</button>
+      </div>
+      <div id="supplementStatus" class="memory-tool-status"></div>
+    </div>
+  `;
+
+  timelineEditor.parentNode.insertBefore(
+    memoryToolsContainer,
+    timelineEditor
+  );
+
+  editTranscriptButton = document.getElementById("editTranscriptButton");
+  const openSupplementButton = document.getElementById("openSupplementButton");
+  transcriptEditPanel = document.getElementById("transcriptEditPanel");
+  transcriptEditTextarea = document.getElementById("transcriptEditTextarea");
+  saveTranscriptButton = document.getElementById("saveTranscriptButton");
+  cancelTranscriptEditButton = document.getElementById("cancelTranscriptEditButton");
+  supplementPanel = document.getElementById("supplementPanel");
+  supplementTextarea = document.getElementById("supplementTextarea");
+  saveSupplementButton = document.getElementById("saveSupplementButton");
+  recordSupplementButton = document.getElementById("recordSupplementButton");
+  supplementStatus = document.getElementById("supplementStatus");
+
+  editTranscriptButton.onclick = () => {
+    const item = archiveItems.find(row => row.answer_id === openedMemoryId);
+    if (!item) return;
+
+    transcriptEditTextarea.value = item.transcript || "";
+    transcriptEditPanel.classList.remove("hidden");
+    supplementPanel.classList.add("hidden");
+    transcriptEditTextarea.focus();
+  };
+
+  openSupplementButton.onclick = () => {
+    supplementPanel.classList.toggle("hidden");
+    transcriptEditPanel.classList.add("hidden");
+    supplementStatus.textContent = "";
+
+    if (!supplementPanel.classList.contains("hidden")) {
+      supplementTextarea.focus();
+    }
+  };
+
+  cancelTranscriptEditButton.onclick = () => {
+    transcriptEditPanel.classList.add("hidden");
+  };
+
+  saveTranscriptButton.onclick = saveTranscriptCorrection;
+  saveSupplementButton.onclick = saveSupplementText;
+  recordSupplementButton.onclick = toggleSupplementRecording;
+}
+
+async function reanalyzeOpenedMemory() {
+  if (!openedMemoryId) return;
+
+  const response = await apiFetch(
+    `/answer/${openedMemoryId}/analyze`,
+    { method: "POST" }
+  );
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(
+      data.detail ||
+      "Die Erinnerung konnte nicht neu ausgewertet werden."
+    );
+  }
+
+  await loadArchive();
+}
+
+async function saveTranscriptCorrection() {
+  if (!openedMemoryId) return;
+
+  const text = transcriptEditTextarea.value.trim();
+
+  if (!text) {
+    alert("Der korrigierte Text darf nicht leer sein.");
+    return;
+  }
+
+  saveTranscriptButton.disabled = true;
+  saveTranscriptButton.textContent = "Wird gespeichert …";
+
+  try {
+    const response = await apiFetch(
+      `/answer/${openedMemoryId}/transcript`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          text,
+          change_note: "Von Roman oder Familie korrigiert"
+        })
+      }
+    );
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(
+        data.detail ||
+        "Die Korrektur konnte nicht gespeichert werden."
+      );
+    }
+
+    saveTranscriptButton.textContent = "Wird neu eingeordnet …";
+    await reanalyzeOpenedMemory();
+
+    const updated = archiveItems.find(row => row.answer_id === openedMemoryId);
+
+    if (updated) {
+      dialogTranscript.textContent = updated.transcript || "";
+      dialogSummary.textContent = getMemorySummary(updated);
+    }
+
+    transcriptEditPanel.classList.add("hidden");
+    saveTranscriptButton.textContent = "✓ Gespeichert";
+
+    setTimeout(() => {
+      saveTranscriptButton.textContent = "Korrektur speichern";
+    }, 1600);
+  } catch (error) {
+    console.error(error);
+    alert(error.message);
+    saveTranscriptButton.textContent = "Korrektur speichern";
+  } finally {
+    saveTranscriptButton.disabled = false;
+  }
+}
+
+async function saveSupplementText() {
+  if (!openedMemoryId) return;
+
+  const transcript = supplementTextarea.value.trim();
+
+  if (!transcript) {
+    supplementStatus.textContent = "Bitte erst eine Ergänzung eingeben.";
+    return;
+  }
+
+  saveSupplementButton.disabled = true;
+  supplementStatus.textContent = "Ergänzung wird gespeichert …";
+
+  try {
+    const response = await apiFetch(
+      `/answer/${openedMemoryId}/supplement`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          transcript,
+          supplement_type: "clarification"
+        })
+      }
+    );
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(
+        data.detail ||
+        "Die Ergänzung konnte nicht gespeichert werden."
+      );
+    }
+
+    supplementStatus.textContent = "Die Ergänzung wird neu eingeordnet …";
+    await reanalyzeOpenedMemory();
+    supplementTextarea.value = "";
+    supplementStatus.textContent = "✓ Ergänzung gespeichert";
+
+    const updated = archiveItems.find(row => row.answer_id === openedMemoryId);
+    if (updated) {
+      dialogSummary.textContent = getMemorySummary(updated);
+    }
+  } catch (error) {
+    console.error(error);
+    supplementStatus.textContent = error.message;
+  } finally {
+    saveSupplementButton.disabled = false;
+  }
+}
+
+async function toggleSupplementRecording() {
+  if (!openedMemoryId) return;
+
+  if (supplementRecorder && supplementRecorder.state !== "inactive") {
+    supplementRecorder.stop();
+    return;
+  }
+
+  try {
+    const format = selectRecordingFormat();
+
+    if (!format) {
+      throw new Error("Dieses Gerät unterstützt die Sprachaufnahme leider nicht.");
+    }
+
+    supplementMimeType = format.mime;
+    supplementExtension = format.extension;
+    supplementChunks = [];
+
+    supplementStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+
+    supplementRecorder = new MediaRecorder(
+      supplementStream,
+      {
+        mimeType: supplementMimeType,
+        audioBitsPerSecond: 128000
+      }
+    );
+
+    supplementRecorder.ondataavailable = event => {
+      if (event.data && event.data.size > 0) {
+        supplementChunks.push(event.data);
+      }
+    };
+
+    supplementRecorder.onstop = uploadSupplementRecording;
+    supplementRecorder.start();
+
+    recordSupplementButton.textContent = "Aufnahme beenden";
+    recordSupplementButton.classList.add("recording-inline");
+    supplementStatus.textContent = "Ich höre dir zu …";
+  } catch (error) {
+    console.error(error);
+    supplementStatus.textContent = error.message;
+  }
+}
+
+async function uploadSupplementRecording() {
+  if (supplementStream) {
+    supplementStream.getTracks().forEach(track => track.stop());
+  }
+
+  recordSupplementButton.textContent = "Ergänzung sprechen";
+  recordSupplementButton.classList.remove("recording-inline");
+
+  if (!supplementChunks.length) {
+    supplementStatus.textContent = "Es wurde keine Sprache aufgenommen.";
+    return;
+  }
+
+  const answerId = openedMemoryId;
+
+  if (!answerId) return;
+
+  try {
+    supplementStatus.textContent = "Die Ergänzung wird transkribiert …";
+    recordSupplementButton.disabled = true;
+
+    const blob = new Blob(
+      supplementChunks,
+      {
+        type: supplementRecorder?.mimeType || supplementMimeType
+      }
+    );
+
+    const formData = new FormData();
+    formData.append("supplement_type", "clarification");
+    formData.append(
+      "audio",
+      blob,
+      `ergaenzung.${supplementExtension}`
+    );
+
+    const response = await apiFetch(
+      `/answer/${answerId}/supplement/audio`,
+      {
+        method: "POST",
+        body: formData
+      }
+    );
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(
+        data.detail ||
+        "Die gesprochene Ergänzung konnte nicht gespeichert werden."
+      );
+    }
+
+    supplementTextarea.value = data.transcript || "";
+    supplementStatus.textContent = "Die Ergänzung wird neu eingeordnet …";
+    await reanalyzeOpenedMemory();
+    supplementStatus.textContent = "✓ Gesprochene Ergänzung gespeichert";
+
+    const updated = archiveItems.find(row => row.answer_id === answerId);
+    if (updated) {
+      dialogSummary.textContent = getMemorySummary(updated);
+    }
+  } catch (error) {
+    console.error(error);
+    supplementStatus.textContent = error.message;
+  } finally {
+    recordSupplementButton.disabled = false;
+    supplementChunks = [];
+    supplementRecorder = null;
+    supplementStream = null;
+  }
+}
+
 function openMemory(answerId) {
   const item =
     archiveItems.find(
@@ -1441,6 +1878,8 @@ function openMemory(answerId) {
   if (!item) return;
 
   openedMemoryId = answerId;
+
+  ensureMemoryToolsUI();
 
   dialogTitle.textContent =
     getMemoryTitle(item);
@@ -1481,6 +1920,15 @@ function openMemory(answerId) {
       ? "none"
       : "block";
 
+  memoryToolsContainer.style.display =
+    currentRole === "reader"
+      ? "none"
+      : "block";
+
+  transcriptEditPanel.classList.add("hidden");
+  supplementPanel.classList.add("hidden");
+  supplementStatus.textContent = "";
+
   memoryDialog.style.display =
     "block";
 
@@ -1489,6 +1937,10 @@ function openMemory(answerId) {
 }
 
 function closeMemory() {
+  if (supplementRecorder && supplementRecorder.state !== "inactive") {
+    supplementRecorder.stop();
+  }
+
   memoryDialog.style.display =
     "none";
 
@@ -1673,12 +2125,6 @@ retryButton.onclick =
 
 discardButton.onclick =
   discardMemory;
-
-followUpButton.onclick =
-  activateFollowUp;
-
-skipFollowUpButton.onclick =
-  showHome;
 
 newMemoryButton.onclick =
   showHome;

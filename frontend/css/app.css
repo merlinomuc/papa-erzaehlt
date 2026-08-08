@@ -416,3 +416,17 @@ button:focus-visible,input:focus-visible,select:focus-visible{
     scroll-behavior:auto!important;
   }
 }
+
+/* Memory editing and supplements */
+.memory-tools{margin-top:30px;padding-top:24px;border-top:1px solid var(--line)}
+.memory-tools-heading h3{margin:7px 0 8px;color:#e4c58d;font-weight:normal;font-size:1.25rem}
+.memory-tools-heading p{margin:0 0 18px;color:var(--cream-soft);line-height:1.55;font-size:.92rem}
+.memory-tool-actions,.memory-tool-button-row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.memory-tool-panel{margin-top:16px;padding:16px;border:1px solid rgba(217,155,62,.18);background:rgba(255,255,255,.025)}
+.memory-tool-panel label{display:block;margin-bottom:8px;color:var(--gold-mid);font-family:Arial,sans-serif;font-size:.72rem;text-transform:uppercase;letter-spacing:.11em}
+.memory-tool-panel textarea{width:100%;resize:vertical;min-height:120px;padding:13px 14px;border:1px solid rgba(217,155,62,.24);border-radius:12px;color:var(--cream);background:rgba(0,0,0,.35);font:inherit;line-height:1.55;outline:none}
+.memory-tool-panel textarea:focus{border-color:rgba(228,181,92,.62);box-shadow:0 0 0 2px rgba(228,181,92,.08)}
+.memory-tool-button-row{margin-top:12px}
+.memory-tool-status{min-height:24px;margin-top:12px;color:var(--cream-soft);font-size:.88rem;line-height:1.4;text-align:center}
+.recording-inline{box-shadow:0 0 0 2px rgba(139,48,39,.4),0 0 24px rgba(139,48,39,.24)!important}
+@media(max-width:430px){.memory-tool-actions,.memory-tool-button-row{grid-template-columns:1fr}}
