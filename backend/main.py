@@ -166,6 +166,25 @@ def clean_text(value):
     ).strip()
 
 
+def parse_json_response(raw_text: str):
+    text = clean_text(
+        raw_text
+    )
+
+    if text.startswith("```"):
+        text = text.strip("`").strip()
+
+        if text.startswith("json"):
+            text = (
+                text[4:]
+                .strip()
+            )
+
+    return json.loads(
+        text
+    )
+
+
 # =========================================================
 # AUTH
 # =========================================================
@@ -464,21 +483,6 @@ def get_answer_chain(
     Liefert die komplette Kette von der
     ursprünglichen Erinnerung bis zur
     aktuellen Antwort.
-
-    Beispiel:
-
-    Hauptantwort
-       ↓
-    Folgeantwort 1
-       ↓
-    Folgeantwort 2
-
-    Rückgabe:
-    [
-        Hauptantwort,
-        Folgeantwort 1,
-        Folgeantwort 2
-    ]
     """
 
     chain = []
@@ -562,9 +566,9 @@ def get_timeline_family_answer_ids(
     root_answer_id: str
 ):
     """
-    Sucht vom Ursprung aus sämtliche
-    Antworten, die über Folgefragen
-    zu dieser Erinnerung gehören.
+    Sucht sämtliche Antworten,
+    die über Folgefragen zu derselben
+    Erinnerung gehören.
     """
 
     answer_ids = []
@@ -650,12 +654,6 @@ def update_timeline_family(
     timeline_label,
     timeline_confidence,
 ):
-    """
-    Eine Haupt-Erinnerung und alle
-    Folgeantworten bekommen dieselbe
-    zeitliche Einordnung.
-    """
-
     root_answer = (
         get_root_answer(
             answer
@@ -700,107 +698,29 @@ def update_timeline_family(
 
 
 # =========================================================
-# KONTEXT FÜR TIEFE FOLGEFRAGEN
+# KONTEXT DER ERINNERUNG
 # =========================================================
 
-def build_memory_chain_context(
+def build_full_memory_context(
     answer: dict
 ):
     """
-    Gibt der KI die bisherigen Fragen UND
-    Antworten derselben Erinnerung.
+    Baut den kompletten Dialog dieser
+    Erinnerung auf.
 
-    Die aktuelle Antwort wird absichtlich
-    nicht in 'bisheriger Verlauf' aufgenommen,
-    weil sie separat im Prompt steht.
+    Enthält auch die aktuelle Antwort.
     """
 
     chain = get_answer_chain(
         answer
-    )
-
-    if len(chain) <= 1:
-        return (
-            "Es gibt noch keine vorherigen "
-            "Antworten innerhalb dieser "
-            "Erinnerung."
-        )
-
-    previous_answers = (
-        chain[:-1]
     )
 
     blocks = []
 
-    for index, previous in enumerate(
-        previous_answers,
+    for index, item in enumerate(
+        chain,
         start=1,
     ):
-        question = (
-            get_question_or_none(
-                previous.get(
-                    "question_id"
-                )
-            )
-        )
-
-        question_text = ""
-
-        if question:
-            question_text = clean_text(
-                question.get(
-                    "text"
-                )
-            )
-
-        transcript = clean_text(
-            previous.get(
-                "original_transcript"
-            )
-        )
-
-        if question_text:
-            block = (
-                f"Teil {index}\n"
-                f"Frage: {question_text}\n"
-                f"Antwort: {transcript}"
-            )
-
-        else:
-            block = (
-                f"Teil {index}\n"
-                f"Freie Erzählung: "
-                f"{transcript}"
-            )
-
-        blocks.append(
-            block
-        )
-
-    return "\n\n".join(
-        blocks
-    )
-
-
-def get_all_previous_questions(
-    answer: dict
-):
-    """
-    Liefert sämtliche Fragen, die innerhalb
-    dieser konkreten Erinnerung bereits
-    gestellt wurden.
-
-    Dadurch kann die KI erkennen, welche
-    Richtungen bereits abgefragt wurden.
-    """
-
-    chain = get_answer_chain(
-        answer
-    )
-
-    questions = []
-
-    for item in chain:
         question = (
             get_question_or_none(
                 item.get(
@@ -809,27 +729,49 @@ def get_all_previous_questions(
             )
         )
 
-        if (
-            question
-            and clean_text(
-                question.get("text")
-            )
-        ):
-            questions.append(
+        question_text = ""
+
+        if question:
+            question_text = (
                 clean_text(
-                    question.get("text")
+                    question.get(
+                        "text"
+                    )
                 )
             )
 
-    if not questions:
-        return (
-            "Noch keine früheren Fragen "
-            "innerhalb dieser Erinnerung."
+        transcript = (
+            clean_text(
+                item.get(
+                    "original_transcript"
+                )
+            )
         )
 
-    return "\n".join(
-        f"- {question}"
-        for question in questions
+        if question_text:
+            block = (
+                f"ABSCHNITT {index}\n"
+                f"Frage: {question_text}\n"
+                f"Antwort: {transcript}"
+            )
+
+        else:
+            block = (
+                f"ABSCHNITT {index}\n"
+                f"Freie Erzählung: {transcript}"
+            )
+
+        blocks.append(
+            block
+        )
+
+    if not blocks:
+        return (
+            "Noch keine Erinnerung vorhanden."
+        )
+
+    return "\n\n".join(
+        blocks
     )
 
 
@@ -880,6 +822,707 @@ def normalize_timeline(
         label,
         confidence,
     )
+
+
+# =========================================================
+# EMPATHISCHE FOLGEFRAGE
+# =========================================================
+
+def generate_follow_up_question(
+    answer: dict,
+    analysis: dict,
+):
+    """
+    Zweiter, eigenständiger KI-Aufruf.
+
+    Dieser Aufruf hat NUR die Aufgabe,
+    eine empathische und biografisch
+    tiefgehende Folgefrage zu formulieren.
+    """
+
+    full_context = (
+        build_full_memory_context(
+            answer
+        )
+    )
+
+    summary = clean_text(
+        analysis.get(
+            "summary",
+            ""
+        )
+    )
+
+    topics = (
+        analysis.get(
+            "topics",
+            []
+        )
+        or []
+    )
+
+    people = (
+        analysis.get(
+            "people",
+            []
+        )
+        or []
+    )
+
+    places = (
+        analysis.get(
+            "places",
+            []
+        )
+        or []
+    )
+
+    prompt = f"""
+Du führst ein ruhiges, warmes und sehr aufmerksames
+biografisches Gespräch mit einem älteren Menschen.
+
+Deine EINZIGE Aufgabe ist jetzt:
+
+Nach der bisherigen Erzählung eine kurze,
+menschliche Reaktion und – nur wenn sinnvoll –
+eine einzige wirklich gute Folgefrage zu formulieren.
+
+Du sollst NICHT analysieren.
+Du sollst NICHT zusammenfassen.
+Du sollst NICHT möglichst viele Informationen sammeln.
+
+Du sollst eine Tür öffnen, durch die der Erzähler,
+wenn er möchte, freiwillig tiefer in seine eigene
+Lebenserinnerung eintreten kann.
+
+
+==================================================
+BISHERIGE GESAMTE ERINNERUNG
+==================================================
+
+{full_context}
+
+
+==================================================
+BISHERIGE ANALYSE
+==================================================
+
+Kurze Zusammenfassung:
+{summary}
+
+Themen:
+{json.dumps(topics, ensure_ascii=False)}
+
+Menschen:
+{json.dumps(people, ensure_ascii=False)}
+
+Orte:
+{json.dumps(places, ensure_ascii=False)}
+
+
+==================================================
+DAS WICHTIGSTE ZIEL
+==================================================
+
+Suche nach der MENSCHLICHEN BEDEUTUNG hinter
+der Erzählung.
+
+Ein erwähnter Gegenstand, ein Geräusch, ein Zimmer,
+ein Vorhang, ein Auto, ein Haus, ein Kleidungsstück,
+ein Möbelstück oder irgendein anderes Detail ist
+normalerweise NICHT das eigentliche Thema.
+
+Solche Details sind oft nur Türen zu:
+
+- einer Beziehung
+- einem Gefühl
+- einer Lebensphase
+- Geborgenheit
+- Angst
+- Verlust
+- Liebe
+- Stolz
+- Scham
+- Hoffnung
+- Einsamkeit
+- Freiheit
+- Verantwortung
+- einer Entscheidung
+- einem Wendepunkt
+- einer Sehnsucht
+- einem späteren Verständnis
+- einer Veränderung im Leben
+- einer persönlichen Haltung
+
+Suche nach dieser tieferen Ebene.
+
+
+==================================================
+EXTREM WICHTIG:
+NICHT AM OBERFLÄCHENDETAIL HÄNGEN BLEIBEN
+==================================================
+
+Beispiel:
+
+Erzähler:
+"Ich erinnere mich noch an die Vorhänge
+in unserem Kinderzimmer."
+
+SCHLECHT:
+"Welche Farbe hatten die Vorhänge?"
+
+SCHLECHT:
+"Wie sahen die Vorhänge aus?"
+
+SCHLECHT:
+"Aus welchem Stoff waren sie?"
+
+BESSER:
+"Dass dir gerade dieses Zimmer so deutlich
+in Erinnerung geblieben ist, ist bemerkenswert.
+Was verbindest du heute mit der Zeit,
+in der du dort gelebt hast?"
+
+Oder:
+
+"Wenn du an dieses Kinderzimmer zurückdenkst:
+War das für dich damals eher ein Ort der
+Geborgenheit oder verbindest du ganz andere
+Gefühle damit?"
+
+Diese zweite Variante nur verwenden,
+wenn sie nicht suggestiv etwas behauptet.
+
+
+Beispiel:
+
+Erzähler:
+"Ich erinnere mich an das Lachen meiner Mutter."
+
+SCHLECHT:
+"Wie klang das Lachen?"
+
+SCHLECHT:
+"War es laut?"
+
+BESSER:
+"Dass dir gerade ihr Lachen geblieben ist,
+scheint etwas Besonderes zu sein.
+Was bedeutete deine Mutter damals für dich?"
+
+
+Beispiel:
+
+Erzähler:
+"Wir hatten damals einen roten Opel."
+
+SCHLECHT:
+"Welches Modell war der Opel?"
+
+BESSER:
+"Wenn du an diese Zeit mit dem Auto zurückdenkst:
+Wofür stand es damals für euch – Freiheit,
+Familie, Aufbruch oder etwas ganz anderes?"
+
+Aber nur, wenn diese Richtung wirklich
+zur bisherigen Erzählung passt.
+
+
+==================================================
+PRIORITÄTEN FÜR TIEFE
+==================================================
+
+Suche möglichst in dieser Reihenfolge nach
+einer noch NICHT erzählten Ebene:
+
+
+1. PERSÖNLICHE BEDEUTUNG
+
+Warum ist gerade diese Erinnerung
+bis heute geblieben?
+
+Was bedeutet sie für den Erzähler?
+
+
+2. BEZIEHUNGEN
+
+Was bedeutete eine genannte Person für ihn?
+
+Wie war die Beziehung wirklich?
+
+Gab es Nähe, Distanz, Bewunderung,
+Spannung, Abhängigkeit oder Vertrauen?
+
+NICHTS davon unterstellen.
+Nur vorsichtig danach fragen,
+wenn sich die Beziehung als wichtig zeigt.
+
+
+3. INNERE ERFAHRUNG
+
+Was hat die Situation innerlich mit ihm gemacht?
+
+Was dachte er damals?
+
+Was war schwierig?
+
+Was gab ihm Kraft?
+
+Was machte ihn stolz?
+
+Was hat ihn geprägt?
+
+Nur fragen, wenn die Antwort noch
+nicht bereits erzählt wurde.
+
+
+4. WENDEPUNKTE
+
+Gab es einen Moment,
+nach dem etwas anders war?
+
+Hat sich eine Haltung verändert?
+
+Musste er eine Entscheidung treffen?
+
+
+5. IDENTITÄT
+
+Was hat diese Erfahrung aus seiner Sicht
+mit dem Menschen zu tun,
+der er später geworden ist?
+
+
+6. SPÄTERES VERSTEHEN
+
+Hat er erst später verstanden,
+was damals wirklich passiert ist
+oder was es für ihn bedeutet hat?
+
+
+7. HEUTIGER BLICK
+
+Sieht er die Situation heute anders
+als damals?
+
+Würde er heute etwas anders machen?
+
+Was würde er seinem damaligen Ich sagen?
+
+Diese Richtung sparsam verwenden.
+
+
+8. UNGESAGTES
+
+Gab es etwas,
+worüber damals nicht gesprochen wurde?
+
+Gab es Gefühle oder Gedanken,
+die man für sich behalten musste?
+
+Nur wenn die Erzählung tatsächlich
+eine solche Ebene nahelegt.
+
+
+9. VERLUST, BEDAUERN, STOLZ, LIEBE,
+   HOFFNUNG ODER VERSÖHNUNG
+
+Nur wenn diese Ebene wirklich
+aus der Erinnerung hervorgeht.
+
+Nicht künstlich hineininterpretieren.
+
+
+10. KONKRETE SZENE
+
+Nur wenn eine konkrete Szene wahrscheinlich
+eine emotionale oder biografische Bedeutung
+öffnet.
+
+Die Szene ist Mittel zum Zweck,
+nicht das eigentliche Ziel.
+
+
+==================================================
+WIEDERHOLUNGSVERBOT
+==================================================
+
+Du hast oben die GESAMTE bisherige Erinnerung.
+
+Lies sie vollständig.
+
+Frage NIEMALS nach etwas,
+das bereits beantwortet wurde.
+
+Frage auch nicht dasselbe
+mit anderen Worten.
+
+Wenn bereits erzählt wurde,
+wie sich etwas angefühlt hat,
+frage NICHT noch einmal:
+
+"Wie hast du dich dabei gefühlt?"
+
+Wenn bereits die Beziehung zur Mutter
+ausführlich beschrieben wurde,
+frage NICHT erneut nach dieser Beziehung.
+
+Wenn bereits erklärt wurde,
+warum eine Entscheidung getroffen wurde,
+frage NICHT erneut nach dem Grund.
+
+Wenn eine Ebene bereits erzählt wurde,
+suche die nächste noch offene Ebene.
+
+
+==================================================
+EMPATHISCHE REAKTION
+==================================================
+
+Bevor die eigentliche Frage kommt,
+DARF ein kurzer empathischer Satz stehen.
+
+Meistens ein Satz.
+
+Nie mehr als zwei sehr kurze Sätze.
+
+Beispiele:
+
+"Das klingt nach einer wirklich schweren Zeit."
+
+"Das scheint dir bis heute viel zu bedeuten."
+
+"Das klingt nach einer sehr schönen Erinnerung."
+
+"Da steckt offenbar viel Erinnerung drin."
+
+"Das muss ein ziemlich einschneidender Moment
+gewesen sein."
+
+"Dass dir gerade dieser Augenblick geblieben ist,
+ist bemerkenswert."
+
+"Das klingt nach einer Zeit,
+die dich sehr geprägt haben könnte."
+
+
+Aber:
+
+Behaupte niemals ein Gefühl als Tatsache,
+wenn der Erzähler es nicht selbst gesagt hat.
+
+SCHLECHT:
+
+"Du warst bestimmt völlig verzweifelt."
+
+SCHLECHT:
+
+"Das hat dich traumatisiert."
+
+SCHLECHT:
+
+"Du hast dich sicher ungeliebt gefühlt."
+
+
+BESSER:
+
+"Das klingt nach einer sehr schwierigen Situation."
+
+Oder:
+
+"Das könnte eine ziemlich belastende Zeit
+gewesen sein."
+
+
+==================================================
+MEHR EMOTIONALER KONTAKT
+==================================================
+
+Die Antwort darf warm und menschlich sein.
+
+Sie darf zeigen:
+
+"Ich habe verstanden,
+dass das für dich wichtig ist."
+
+Sie darf Anteilnahme zeigen.
+
+Sie darf auch einmal sagen:
+
+"Oh je, das klingt wirklich nach
+einer schweren Situation."
+
+Aber solche Formulierungen nur selten
+und nur wenn sie wirklich passen.
+
+Nicht jede Antwort mit:
+
+"Das klingt ..."
+
+beginnen.
+
+Variiere natürlich.
+
+
+==================================================
+EMOJIS
+==================================================
+
+Emojis sind erlaubt,
+aber wirklich nur sehr selten.
+
+Normalfall:
+KEIN Emoji.
+
+Wenn ein Emoji die kurze menschliche Reaktion
+wirklich natürlicher macht,
+darf GENAU EIN Emoji verwendet werden.
+
+Erlaubt sind ausschließlich:
+
+🙂
+😔
+❤️
+😮
+
+Keine anderen Emojis.
+
+Keine Emoji-Ketten.
+
+Kein Emoji am Ende jeder Nachricht.
+
+Bei besonders ernsten Themen wie:
+
+- Tod
+- Krieg
+- schwere Krankheit
+- Gewalt
+- Trauma
+- sehr intime Erinnerungen
+- Missbrauch
+- große Verluste
+
+im Zweifel KEIN Emoji verwenden.
+
+Die Würde der Erzählung ist wichtiger
+als ein Emoji.
+
+
+==================================================
+PERSÖNLICHE FRAGEN SIND ERLAUBT
+==================================================
+
+Du darfst tiefer fragen.
+
+Du darfst zum Beispiel fragen:
+
+"Was hat das damals mit dir gemacht?"
+
+Aber NUR,
+wenn diese emotionale Ebene noch nicht
+ausführlich erzählt wurde.
+
+Du darfst fragen:
+
+"Was glaubst du heute:
+Warum ist dir gerade dieser Moment
+so deutlich geblieben?"
+
+Du darfst fragen:
+
+"Wenn du heute darauf zurückblickst:
+Was hat diese Erfahrung in deinem Leben verändert?"
+
+Du darfst fragen:
+
+"Gab es damals etwas,
+das du niemandem gesagt hast?"
+
+Aber nur,
+wenn die bisherige Erinnerung dafür
+einen echten Anlass gibt.
+
+Du darfst fragen:
+
+"Was bedeutete dieser Mensch wirklich für dich?"
+
+Du darfst fragen:
+
+"Was war damals vielleicht schwieriger,
+als die Menschen um dich herum gemerkt haben?"
+
+Aber nur,
+wenn das nicht einfach frei erfunden
+oder unpassend ist.
+
+
+==================================================
+FREIWILLIGKEIT
+==================================================
+
+Der Erzähler entscheidet immer selbst,
+wie tief er gehen möchte.
+
+Bei einer besonders persönlichen Frage
+kannst du gelegentlich sagen:
+
+"Wenn du darüber erzählen möchtest ..."
+
+"Falls du das erzählen magst ..."
+
+"Wenn du dich daran erinnern möchtest ..."
+
+"Nur wenn du darüber sprechen möchtest ..."
+
+Aber nicht mechanisch bei jeder Frage.
+
+
+==================================================
+KEIN THERAPIEGESPRÄCH
+==================================================
+
+Du bist kein Psychotherapeut.
+
+Keine Diagnose.
+
+Keine Traumadeutung.
+
+Keine Behandlung.
+
+Keine Psychoanalyse.
+
+Keine Behauptung über unbewusste Motive.
+
+Keine Aussagen wie:
+
+"Das liegt bestimmt daran, dass ..."
+
+Du darfst psychologisch interessante
+biografische Fragen stellen,
+aber der Erzähler selbst liefert die Bedeutung.
+
+
+==================================================
+DIE BESTE FRAGE
+==================================================
+
+Bevor du antwortest,
+überlege intern mehrere mögliche Fragen.
+
+Prüfe jede davon:
+
+1. Ist sie bereits beantwortet?
+
+2. Ist sie nur ein belangloses Detail?
+
+3. Öffnet sie wirklich eine neue Ebene?
+
+4. Könnte daraus eine Geschichte entstehen?
+
+5. Hat sie biografische Bedeutung?
+
+6. Ist sie menschlich und respektvoll?
+
+7. Würde ein aufmerksamer Gesprächspartner
+   diese Frage tatsächlich stellen?
+
+Wähle nur die beste Frage.
+
+Gib deine Überlegungen NICHT aus.
+
+
+==================================================
+QUALITÄT VOR MENGE
+==================================================
+
+Es muss NICHT nach jeder Erinnerung
+eine Folgefrage geben.
+
+Wenn die Geschichte bereits rund ist,
+
+oder keine neue bedeutungsvolle Ebene
+offen ist,
+
+oder dir nur eine Wiederholung einfällt,
+
+dann gib einen leeren String zurück.
+
+
+==================================================
+AUSGABE
+==================================================
+
+Antworte ausschließlich mit gültigem JSON.
+
+Exakt dieses Format:
+
+{{
+  "follow_up_question": ""
+}}
+
+Wenn eine sinnvolle Frage vorhanden ist,
+enthält follow_up_question:
+
+eine kurze empathische Reaktion
+plus eine einzige vertiefende Frage.
+
+Beispiel:
+
+{{
+  "follow_up_question":
+  "Das klingt nach einer Zeit, die dir bis heute sehr nahe ist. Wenn du darüber erzählen möchtest: Was hat diese Erfahrung später in deinem Leben verändert?"
+}}
+"""
+
+    try:
+        response = (
+            openai_client
+            .responses
+            .create(
+                model="gpt-5-mini",
+                input=prompt,
+            )
+        )
+
+        result = parse_json_response(
+            response.output_text
+            or ""
+        )
+
+        follow_up_question = (
+            clean_text(
+                result.get(
+                    "follow_up_question",
+                    ""
+                )
+            )
+        )
+
+        if (
+            follow_up_question
+            and len(
+                follow_up_question
+            ) < 15
+        ):
+            return ""
+
+        return follow_up_question
+
+    except Exception as exc:
+        # -------------------------------------------------
+        # WICHTIG:
+        #
+        # Wenn nur die Folgefrage fehlschlägt,
+        # darf die eigentliche Erinnerung trotzdem
+        # gespeichert werden.
+        # -------------------------------------------------
+
+        print(
+            "FOLLOW-UP GENERATION ERROR:",
+            exc,
+        )
+
+        return ""
 
 
 # =========================================================
@@ -1700,10 +2343,8 @@ def create_answer(
     )
 
     # -----------------------------------------------------
-    # FOLGEFRAGE:
-    #
-    # Die neue Antwort gehört zeitlich zur
-    # ursprünglichen Erinnerung.
+    # Folgeantwort übernimmt sofort die Zeit
+    # der ursprünglichen Erinnerung.
     # -----------------------------------------------------
 
     if (
@@ -2512,104 +3153,31 @@ def analyze_answer(
             )
         )
 
-    # -----------------------------------------------------
-    # GANZE BISHERIGE ERINNERUNG LADEN
-    # -----------------------------------------------------
-
-    previous_context = (
-        build_memory_chain_context(
-            answer
-        )
-    )
-
-    previous_questions = (
-        get_all_previous_questions(
-            answer
-        )
-    )
-
-    answer_chain = (
-        get_answer_chain(
-            answer
-        )
-    )
-
-    is_follow_up = (
-        len(answer_chain) > 1
-    )
-
     if question_text:
-        current_context_text = f"""
-Aktuelle Frage:
+        context_text = f"""
+Frage:
 {question_text}
 """
     else:
-        current_context_text = """
-Aktuelle Situation:
+        context_text = """
 Es handelt sich um eine freie Erinnerung.
-Es wurde keine Ausgangsfrage gestellt.
+Es wurde vorher keine Frage gestellt.
 """
 
-    if is_follow_up:
-        chain_instruction = """
-Diese Antwort gehört zu einer bereits begonnenen
-Erinnerung. Die bisherige Unterhaltung ist deshalb
-sehr wichtig.
+    # =====================================================
+    # KI 1:
+    # ARCHIVIERUNG / STRUKTURIERUNG
+    # =====================================================
 
-Du MUSST bei der nächsten möglichen Nachfrage
-berücksichtigen, was bereits gefragt UND was bereits
-erzählt wurde.
-"""
-
-    else:
-        chain_instruction = """
-Dies ist der Beginn einer neuen Erinnerung.
-Eine eventuelle Nachfrage darf eine interessante
-noch nicht erzählte Ebene dieser Erinnerung öffnen.
-"""
-
-    prompt = f"""
+    analysis_prompt = f"""
 Du analysierst eine persönliche Lebenserinnerung
 für ein privates Familienarchiv.
 
-Es geht nicht darum, möglichst viele Fragen zu stellen.
-Es geht darum, gute Lebenserinnerungen mit möglichst
-viel persönlicher Tiefe zu bewahren.
+{context_text}
 
-{chain_instruction}
-
-==================================================
-BISHERIGER VERLAUF DIESER ERINNERUNG
-==================================================
-
-{previous_context}
-
-
-==================================================
-FRAGEN, DIE IN DIESER ERINNERUNG BEREITS
-GESTELLT WURDEN
-==================================================
-
-{previous_questions}
-
-
-==================================================
-AKTUELLE FRAGE
-==================================================
-
-{current_context_text}
-
-
-==================================================
-AKTUELLE ANTWORT
-==================================================
+Erzählung:
 
 {transcript}
-
-
-==================================================
-AUSGABE
-==================================================
 
 Antworte ausschließlich mit gültigem JSON.
 
@@ -2622,7 +3190,6 @@ Format:
   "years": [],
   "topics": [],
   "keywords": [],
-  "follow_up_question": "",
   "privacy_signal": false,
   "privacy_reason": "",
   "timeline_year": null,
@@ -2637,14 +3204,12 @@ ZUSAMMENFASSUNG
 
 summary:
 
-Schreibe eine kurze, natürliche und respektvolle
-Zusammenfassung der AKTUELLEN Antwort.
+Kurze, natürliche und respektvolle
+Zusammenfassung.
 
 Keine neuen Tatsachen erfinden.
 
 Keine psychologische Diagnose.
-
-Keine Interpretation als Tatsache darstellen.
 
 
 people:
@@ -2674,282 +3239,13 @@ Wichtige Stichwörter.
 
 
 ==================================================
-FOLGEFRAGE – SEHR WICHTIG
-==================================================
-
-follow_up_question:
-
-Formuliere HÖCHSTENS EINE kurze,
-freundliche, offene und persönliche Nachfrage.
-
-Die Nachfrage soll den Erzähler dazu einladen,
-wenn er möchte, noch eine Ebene tiefer in diese
-konkrete Erinnerung einzutauchen.
-
-Das Ziel ist NICHT, Informationen abzuhaken.
-
-Das Ziel ist eine reichere Lebenserinnerung:
-ein konkreter Moment, ein Gefühl, ein Gedanke,
-eine Entscheidung, eine Beziehung, ein Konflikt,
-eine Veränderung oder eine persönliche Bedeutung.
-
-
---------------------------------------------------
-ABSOLUTES WIEDERHOLUNGSVERBOT
---------------------------------------------------
-
-Bevor du eine Folgefrage formulierst, prüfe den
-GESAMTEN bisherigen Verlauf dieser Erinnerung.
-
-Frage NICHT nach etwas, das bereits erzählt wurde.
-
-Frage NICHT nach etwas, das sinngemäß bereits
-erzählt wurde.
-
-Frage NICHT dieselbe Sache mit anderen Worten
-noch einmal.
-
-Paraphrasiere NICHT einfach eine Aussage des
-Erzählers und hänge ein Fragezeichen daran.
-
-Frage NICHT nach einer Information, deren Antwort
-bereits im bisherigen Verlauf steht.
-
-Frage NICHT erneut nach einer Person, einem Ort,
-einem Ereignis, einem Grund oder einem Gefühl,
-wenn dieser Punkt bereits ausreichend beschrieben
-wurde.
-
-Frage NICHT immer wieder:
-"Wie war das für dich?"
-wenn diese emotionale Ebene bereits erzählt wurde.
-
-Wurde eine Richtung bereits behandelt,
-musst du eine ANDERE, noch offene Ebene suchen.
-
-
---------------------------------------------------
-MAXIMALE TIEFE
---------------------------------------------------
-
-Bevorzuge eine noch nicht erzählte Ebene wie:
-
-1. KONKRETE SZENE
-   Gibt es einen einzelnen Augenblick,
-   der besonders deutlich im Gedächtnis geblieben ist?
-
-2. INNERER MOMENT
-   Was dachte oder fühlte die Person damals,
-   wenn genau das noch nicht erzählt wurde?
-
-3. ENTSCHEIDUNG
-   Gab es eine Entscheidung, einen Zweifel
-   oder einen Wendepunkt?
-
-4. BEZIEHUNG
-   Was bedeutete eine genannte Person damals
-   für den Erzähler?
-
-5. UNGESAGTES
-   Gab es etwas, das damals nicht ausgesprochen
-   wurde oder erst später verstanden wurde?
-
-6. SINNE UND ATMOSPHÄRE
-   Wie sah, klang oder roch ein konkreter Moment,
-   falls solche Details noch fehlen?
-
-7. FOLGEN
-   Was hat dieses Ereignis später im Leben verändert?
-
-8. HEUTIGER BLICK
-   Wie sieht der Erzähler heute auf diesen
-   konkreten damaligen Moment zurück?
-
-9. ÜBERRASCHUNG
-   Gab es etwas Unerwartetes oder etwas,
-   das anders kam als gedacht?
-
-10. PERSÖNLICHE BEDEUTUNG
-    Warum ist genau diese Erinnerung bis heute
-    im Gedächtnis geblieben?
-
-
---------------------------------------------------
-BEVORZUGE ERZÄHLBARE FRAGEN
---------------------------------------------------
-
-Die beste Nachfrage öffnet eine Geschichte.
-
-Sie soll möglichst nicht mit nur:
-
-"Ja",
-"Nein",
-einem Namen
-oder einer Jahreszahl
-
-beantwortet werden können.
-
-Bevorzuge Formulierungen, die zu einer Szene
-oder einer persönlichen Erzählung einladen.
-
-
---------------------------------------------------
-TON
---------------------------------------------------
-
-Die Frage soll warm, ruhig und respektvoll wirken.
-
-Sie darf neugierig sein.
-
-Sie darf persönlich sein.
-
-Sie darf tief gehen.
-
-Sie darf aber niemals drängen.
-
-Sie soll sich eher wie die Frage eines aufmerksamen
-Menschen anhören als wie ein Interview-Fragebogen.
-
-Keine therapeutische Sprache.
-
-Kein Verhörton.
-
-Keine künstlich pathetische Sprache.
-
-Keine Suggestivfrage.
-
-Keine Behauptung darüber, was der Erzähler
-gefühlt haben müsse.
-
-Keine Bewertung.
-
-
---------------------------------------------------
-FREIWILLIGKEIT
---------------------------------------------------
-
-Bei besonders persönlichen oder emotionalen
-Themen darf die Frage sanft formuliert sein,
-zum Beispiel:
-
-"Wenn du darüber erzählen möchtest:
-..."
-
-oder
-
-"Falls du dich daran erinnern möchtest:
-..."
-
-Aber benutze solche Einleitungen nicht
-mechanisch bei jeder Frage.
-
-
---------------------------------------------------
-QUALITÄT VOR MENGE
---------------------------------------------------
-
-Eine schlechte Folgefrage ist schlechter
-als gar keine Folgefrage.
-
-Wenn der Erzähler das Thema bereits sehr
-vollständig erzählt hat,
-
-ODER
-
-wenn dir nur eine Wiederholung einfällt,
-
-ODER
-
-wenn keine neue sinnvolle Ebene erkennbar ist,
-
-dann setze:
-
-"follow_up_question": ""
-
-
---------------------------------------------------
-BEISPIELE FÜR SCHLECHTE FOLGEFRAGEN
---------------------------------------------------
-
-Wenn bereits erzählt wurde:
-
-"Mein Vater hat mir das Fahrrad geschenkt
-und ich war unglaublich glücklich."
-
-SCHLECHT:
-"Wie hast du dich gefühlt, als dein Vater
-dir das Fahrrad geschenkt hat?"
-
-Die Antwort steht bereits da.
-
-
-Wenn bereits erzählt wurde:
-
-"Wir mussten 1954 nach München ziehen."
-
-SCHLECHT:
-"Seid ihr damals nach München gezogen?"
-
-Das ist nur eine Wiederholung.
-
-
-Wenn bereits erzählt wurde:
-
-"Meine Mutter war sehr streng."
-
-SCHLECHT:
-"War deine Mutter streng?"
-
-Die Antwort wurde schon gegeben.
-
-
---------------------------------------------------
-BEISPIELE FÜR BESSERE TIEFE
---------------------------------------------------
-
-Wenn erzählt wurde:
-
-"Mein Vater hat mir das Fahrrad geschenkt
-und ich war unglaublich glücklich."
-
-MÖGLICHERWEISE GUT:
-"Erinnerst du dich noch an den Moment,
-als du zum ersten Mal damit losgefahren bist?"
-
-Nur wenn dieser Moment noch nicht erzählt wurde.
-
-
-Wenn erzählt wurde:
-
-"Wir mussten 1954 nach München ziehen."
-
-MÖGLICHERWEISE GUT:
-"Was ist dir von eurem ersten Tag
-in München besonders im Gedächtnis geblieben?"
-
-Nur wenn dieser erste Tag noch nicht erzählt wurde.
-
-
-Wenn erzählt wurde:
-
-"Meine Mutter war sehr streng."
-
-MÖGLICHERWEISE GUT:
-"Gab es trotzdem einen Moment mit deiner Mutter,
-an den du besonders gern zurückdenkst?"
-
-Nur wenn diese Seite der Beziehung
-noch nicht erzählt wurde.
-
-
-==================================================
 ZEITLEISTE
 ==================================================
 
 timeline_year:
 
 Nur eine vierstellige Jahreszahl,
-wenn sich aus der AKTUELLEN Erzählung selbst
+wenn sich aus der Erzählung selbst
 ein sinnvolles Jahr ergibt.
 
 
@@ -2966,25 +3262,26 @@ Natürliche Bezeichnung wie:
 
 timeline_confidence:
 
-"exact":
+"exact",
 wenn das Jahr klar genannt wurde.
 
-"approximate":
-wenn die Person selbst ungefähr ein Jahr nennt.
+"approximate",
+wenn die Person selbst ungefähr
+ein Jahr nennt.
 
-"unknown":
+"unknown",
 wenn kein belastbares Jahr vorhanden ist.
 
 
 WICHTIG:
 
-Keine historischen Jahreszahlen aus
-deinem Weltwissen ergänzen.
+Keine historischen Jahreszahlen
+aus deinem Weltwissen ergänzen.
 
-Keine Jahreszahl bloß erraten.
+Keine Jahreszahl erraten.
 
-Keine Jahreszahl daraus ableiten,
-welches historische Ereignis erwähnt wurde.
+Keine Jahreszahl aus bekannten
+historischen Ereignissen ableiten.
 
 Bei Unsicherheit:
 
@@ -2998,9 +3295,8 @@ PRIVACY
 ==================================================
 
 privacy_signal = true NUR wenn die Person
-klar ausdrückt, dass die Aussage vertraulich,
-privat oder nicht für alle bestimmt sein soll.
-
+klar ausdrückt, dass die Aussage vertraulich
+oder nicht für alle bestimmt sein soll.
 
 Beispiele TRUE:
 
@@ -3011,7 +3307,6 @@ Beispiele TRUE:
 - "Das ist privat."
 - "Das soll nur die Familie wissen."
 
-
 Beispiele FALSE:
 
 - "Das ist kein Geheimnis."
@@ -3020,56 +3315,30 @@ Beispiele FALSE:
 - Persönliche Inhalte ohne ausdrücklichen
   Vertraulichkeitswunsch.
 
-
-Bei Unsicherheit:
-
-privacy_signal = false
-
+Bei Unsicherheit false.
 
 privacy_reason:
 
 Bei true kurze sachliche Erklärung.
 
-Sonst leerer String.
+Sonst leer.
 """
 
     try:
-        response = (
+        analysis_response = (
             openai_client
             .responses
             .create(
-                model=
-                    "gpt-5-mini",
-
-                input=
-                    prompt,
+                model="gpt-5-mini",
+                input=analysis_prompt,
             )
         )
 
-        raw_text = (
-            response.output_text
-            or ""
-        ).strip()
-
-        if raw_text.startswith(
-            "```"
-        ):
-            raw_text = (
-                raw_text.strip(
-                    "`"
-                )
+        analysis = (
+            parse_json_response(
+                analysis_response.output_text
+                or ""
             )
-
-            if raw_text.startswith(
-                "json"
-            ):
-                raw_text = (
-                    raw_text[4:]
-                    .strip()
-                )
-
-        analysis = json.loads(
-            raw_text
         )
 
     except Exception as exc:
@@ -3196,30 +3465,6 @@ Sonst leerer String.
 
 
     # =====================================================
-    # FOLGEFRAGE NORMALISIEREN
-    # =====================================================
-
-    follow_up_question = clean_text(
-        analysis.get(
-            "follow_up_question",
-            ""
-        )
-    )
-
-    # Sicherheitsnetz:
-    # Eine extrem kurze "Frage" ist normalerweise
-    # keine brauchbare Vertiefung.
-
-    if (
-        follow_up_question
-        and len(
-            follow_up_question
-        ) < 12
-    ):
-        follow_up_question = ""
-
-
-    # =====================================================
     # ZEIT NORMALISIEREN
     # =====================================================
 
@@ -3284,13 +3529,6 @@ Sonst leerer String.
             or "unknown"
         )
 
-        # -------------------------------------------------
-        # Ursprung hat bereits ein Jahr.
-        #
-        # Dann bleibt die gesamte Folgefrage bei
-        # diesem Ereignis.
-        # -------------------------------------------------
-
         if root_year is not None:
             final_year = (
                 root_year
@@ -3321,16 +3559,6 @@ Sonst leerer String.
                     final_confidence,
             )
 
-        # -------------------------------------------------
-        # Ursprung hat noch kein Jahr.
-        #
-        # Aber Roman nennt erst in der Folgeantwort
-        # ein belastbares Jahr.
-        #
-        # Dann bekommt die gesamte Erinnerungskette
-        # dieses Jahr.
-        # -------------------------------------------------
-
         elif analyzed_year is not None:
             final_year = (
                 analyzed_year
@@ -3360,10 +3588,6 @@ Sonst leerer String.
                 timeline_confidence=
                     final_confidence,
             )
-
-        # -------------------------------------------------
-        # Noch immer kein Jahr.
-        # -------------------------------------------------
 
         else:
             final_year = None
@@ -3397,7 +3621,7 @@ Sonst leerer String.
 
 
     # =====================================================
-    # ZEITLOGIK BEI HAUPTERINNERUNG
+    # ZEITLOGIK HAUPTERINNERUNG
     # =====================================================
 
     else:
@@ -3406,9 +3630,6 @@ Sonst leerer String.
                 "timeline_year"
             )
         )
-
-        # Noch keine Zeit gespeichert:
-        # KI-Auswertung übernehmen.
 
         if existing_year is None:
             final_year = (
@@ -3440,10 +3661,6 @@ Sonst leerer String.
                     final_confidence,
             )
 
-        # Es existiert bereits eine Zeitangabe.
-        # Diese hat Vorrang vor einer späteren
-        # automatischen Analyse.
-
         else:
             final_year = (
                 existing_year
@@ -3464,6 +3681,29 @@ Sonst leerer String.
                 )
                 or "unknown"
             )
+
+
+    # =====================================================
+    # KI 2:
+    # EMPATHISCHE, TIEFE FOLGEFRAGE
+    # =====================================================
+
+    # Antwort nochmals laden,
+    # damit der komplette aktuelle Zustand
+    # für die Erinnerungskette vorhanden ist.
+
+    refreshed_answer = (
+        get_answer_or_404(
+            answer_id
+        )
+    )
+
+    follow_up_question = (
+        generate_follow_up_question(
+            refreshed_answer,
+            analysis,
+        )
+    )
 
 
     # =====================================================
