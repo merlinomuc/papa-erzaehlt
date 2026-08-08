@@ -11,7 +11,7 @@
 
     <meta
         name="theme-color"
-        content="#2f241d"
+        content="#211713"
     >
 
     <title>Romans Erinnerungen</title>
@@ -19,56 +19,64 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
     <style>
+
+        /* =========================================================
+           FARBEN
+        ========================================================= */
+
         :root {
-            --canvas: #cdbb9c;
-            --canvas-dark: #a99371;
+            --leather-1: #18100d;
+            --leather-2: #251813;
+            --leather-3: #33221a;
 
-            --paper: #f4ead7;
-            --paper-bright: #fbf4e7;
-            --paper-deep: #e8d7ba;
+            --paper-1: #fff9ec;
+            --paper-2: #f5e8cf;
+            --paper-3: #e7d3ad;
 
-            --ink: #261d18;
-            --ink-soft: #6c5c4e;
-            --ink-faint: #998873;
+            --ink: #2b211a;
+            --ink-soft: #766454;
+            --ink-faint: #a18d75;
 
-            --wine: #653835;
-            --wine-deep: #472725;
-            --wine-soft: #875953;
+            --wine: #6d3534;
+            --wine-dark: #3d1d1d;
+            --wine-light: #955c56;
 
-            --forest: #34483b;
-            --forest-soft: #58705f;
+            --forest: #3d5144;
 
-            --gold: #9d7435;
-            --gold-bright: #c29b58;
-            --gold-pale: #dfc99d;
+            --brass: #a77a34;
+            --brass-light: #d5b56e;
+            --brass-bright: #f0d99c;
 
-            --line: rgba(101, 70, 37, 0.25);
-            --line-light: rgba(157, 116, 53, 0.18);
+            --line: rgba(129, 91, 45, .24);
+            --line-dark: rgba(83, 52, 26, .34);
 
-            --shadow:
-                0 35px 90px rgba(48, 31, 17, 0.26);
+            --deep-shadow:
+                0 40px 110px rgba(0,0,0,.48);
 
-            --shadow-soft:
-                0 16px 40px rgba(48, 31, 17, 0.13);
+            --page-shadow:
+                0 18px 45px rgba(48,31,17,.18);
         }
 
 
-        /* =====================================================
+        /* =========================================================
            BASIS
-        ====================================================== */
+        ========================================================= */
 
         * {
             box-sizing: border-box;
         }
+
 
         html {
             font-size: 18px;
             scroll-behavior: smooth;
         }
 
+
         body {
             margin: 0;
             min-height: 100vh;
+
             color: var(--ink);
 
             font-family:
@@ -78,26 +86,29 @@
 
             background:
                 radial-gradient(
-                    circle at 17% 5%,
-                    rgba(255,255,255,.33),
-                    transparent 27%
-                ),
-                radial-gradient(
-                    circle at 83% 92%,
-                    rgba(67,43,23,.15),
-                    transparent 33%
+                    circle at 50% 0%,
+                    rgba(120,76,42,.22),
+                    transparent 35%
                 ),
                 repeating-linear-gradient(
-                    90deg,
-                    rgba(255,255,255,.018) 0,
-                    rgba(255,255,255,.018) 1px,
+                    8deg,
+                    rgba(255,255,255,.009) 0,
+                    rgba(255,255,255,.009) 1px,
                     transparent 1px,
-                    transparent 4px
+                    transparent 5px
+                ),
+                repeating-linear-gradient(
+                    98deg,
+                    rgba(255,255,255,.008) 0,
+                    rgba(255,255,255,.008) 1px,
+                    transparent 1px,
+                    transparent 7px
                 ),
                 linear-gradient(
-                    135deg,
-                    var(--canvas),
-                    #b7a17f
+                    145deg,
+                    var(--leather-1),
+                    var(--leather-3) 55%,
+                    #160f0c
                 );
 
             overflow-x: hidden;
@@ -109,16 +120,15 @@
             position: fixed;
             inset: 0;
             pointer-events: none;
-            opacity: .28;
 
             background:
-                repeating-linear-gradient(
-                    15deg,
-                    transparent 0px,
-                    transparent 7px,
-                    rgba(54,34,19,.025) 8px,
-                    transparent 9px
+                radial-gradient(
+                    ellipse at center,
+                    transparent 42%,
+                    rgba(0,0,0,.31) 100%
                 );
+
+            z-index: -1;
         }
 
 
@@ -137,132 +147,640 @@
         button:focus-visible,
         input:focus-visible,
         select:focus-visible {
-            outline:
-                3px solid
-                rgba(194,155,88,.45);
-
-            outline-offset: 3px;
+            outline: 3px solid rgba(213,181,110,.55);
+            outline-offset: 4px;
         }
 
 
-        .hidden {
-            display: none !important;
-        }
+        /* =========================================================
+           START-LADEANSICHT
+        ========================================================= */
 
+        #startupView {
+            position: fixed;
+            inset: 0;
+            z-index: 1000;
 
-        /* =====================================================
-           BUCH / LEINEN
-        ====================================================== */
-
-        .shell {
-            max-width: 1120px;
-            margin: 0 auto;
-            padding: 34px 18px 80px;
-        }
-
-
-        .book {
-            position: relative;
-            max-width: 1010px;
-            min-height: 88vh;
-            margin: 0 auto;
-
-            padding:
-                62px
-                76px
-                58px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
 
             background:
-                linear-gradient(
-                    90deg,
-                    rgba(90,58,30,.055),
-                    transparent 8%,
-                    transparent 92%,
-                    rgba(90,58,30,.05)
-                ),
-                repeating-linear-gradient(
-                    0deg,
-                    rgba(110,77,43,.018) 0,
-                    rgba(110,77,43,.018) 1px,
-                    transparent 1px,
-                    transparent 4px
-                ),
-                var(--paper);
+                radial-gradient(
+                    circle at center,
+                    #35231a,
+                    #17100d 70%
+                );
+
+            color: #f1e2c8;
+        }
+
+
+        .startup-inner {
+            text-align: center;
+        }
+
+
+        .startup-mark {
+            width: 78px;
+            height: 78px;
+
+            margin: 0 auto 22px;
+
+            display: flex;
+            align-items: center;
+            justify-content: center;
+
+            border-radius: 50%;
 
             border:
                 1px solid
-                rgba(85,57,28,.4);
+                rgba(213,181,110,.55);
 
-            border-radius: 3px;
+            color: var(--brass-light);
+
+            font-size: 2rem;
 
             box-shadow:
-                var(--shadow),
-                inset 0 0 90px
-                rgba(116,74,31,.075);
+                0 0 0 7px rgba(213,181,110,.05);
 
             animation:
-                bookArrival
-                .8s
-                cubic-bezier(.2,.7,.2,1)
-                both;
+                startupPulse
+                1.9s
+                ease-in-out
+                infinite;
         }
 
 
-        @keyframes bookArrival {
-            from {
-                transform:
-                    translateY(18px)
-                    scale(.985);
-
-                opacity: 0;
+        @keyframes startupPulse {
+            0%,
+            100% {
+                transform: scale(.96);
+                opacity: .72;
             }
 
-            to {
-                transform:
-                    translateY(0)
-                    scale(1);
-
+            50% {
+                transform: scale(1.05);
                 opacity: 1;
             }
         }
 
 
-        .book::before {
-            content: "";
-            position: absolute;
-            inset: 14px;
-            pointer-events: none;
-
-            border:
-                1px solid
-                rgba(154,110,52,.43);
+        .startup-title {
+            font-size: 1.55rem;
+            letter-spacing: .03em;
         }
 
 
-        .book::after {
-            content: "";
-            position: absolute;
-            inset: 21px;
-            pointer-events: none;
+        .startup-line {
+            position: relative;
 
-            border:
-                1px solid
-                rgba(154,110,52,.13);
+            width: 190px;
+            height: 1px;
+
+            margin: 19px auto 0;
+
+            overflow: hidden;
+
+            background:
+                rgba(213,181,110,.16);
         }
 
 
-        .content {
+        .startup-line::after {
+            content: "";
+            display: block;
+
+            width: 75px;
+            height: 100%;
+
+            background:
+                linear-gradient(
+                    90deg,
+                    transparent,
+                    var(--brass-bright),
+                    transparent
+                );
+
+            animation:
+                lineTravel
+                1.5s
+                ease-in-out
+                infinite;
+        }
+
+
+        @keyframes lineTravel {
+            from {
+                transform: translateX(-80px);
+            }
+
+            to {
+                transform: translateX(210px);
+            }
+        }
+
+
+        /* =========================================================
+           LOGIN
+        ========================================================= */
+
+        #loginView {
+            display: none;
+
+            min-height: 100vh;
+
+            align-items: center;
+            justify-content: center;
+
+            padding: 30px 18px;
+        }
+
+
+        .book-cover {
+            position: relative;
+
+            width: min(620px, 100%);
+
+            padding:
+                66px
+                62px
+                58px;
+
+            color: #f0e3ce;
+
+            background:
+                repeating-linear-gradient(
+                    90deg,
+                    rgba(255,255,255,.014) 0,
+                    rgba(255,255,255,.014) 1px,
+                    transparent 1px,
+                    transparent 5px
+                ),
+                linear-gradient(
+                    145deg,
+                    #402723,
+                    #241713 64%,
+                    #18100e
+                );
+
+            border:
+                1px solid
+                rgba(217,183,113,.43);
+
+            border-radius:
+                7px 18px 18px 7px;
+
+            box-shadow:
+                0 45px 120px rgba(0,0,0,.55),
+                inset 12px 0 25px rgba(0,0,0,.22),
+                inset -1px 0 rgba(255,255,255,.04);
+
+            animation:
+                coverReveal
+                .8s
+                cubic-bezier(.2,.8,.2,1)
+                both;
+        }
+
+
+        @keyframes coverReveal {
+            from {
+                opacity: 0;
+                transform:
+                    perspective(1000px)
+                    rotateY(-7deg)
+                    translateY(15px);
+            }
+
+            to {
+                opacity: 1;
+                transform:
+                    perspective(1000px)
+                    rotateY(0)
+                    translateY(0);
+            }
+        }
+
+
+        .book-cover::before {
+            content: "";
+            position: absolute;
+            inset: 16px;
+
+            border:
+                1px solid
+                rgba(218,184,113,.38);
+
+            border-radius:
+                3px 11px 11px 3px;
+
+            pointer-events: none;
+        }
+
+
+        .book-cover::after {
+            content: "";
+
+            position: absolute;
+
+            top: 0;
+            bottom: 0;
+            left: 28px;
+
+            width: 1px;
+
+            background:
+                rgba(218,184,113,.18);
+
+            box-shadow:
+                6px 0 13px rgba(0,0,0,.28);
+        }
+
+
+        .cover-kicker {
             position: relative;
             z-index: 2;
+
+            text-align: center;
+
+            color: var(--brass-light);
+
+            font-family:
+                Arial,
+                Helvetica,
+                sans-serif;
+
+            text-transform: uppercase;
+            letter-spacing: .32em;
+            font-size: .63rem;
         }
 
 
-        /* =====================================================
-           TITEL
-        ====================================================== */
+        .cover-title {
+            position: relative;
+            z-index: 2;
 
-        .kicker {
+            margin: 18px 0 13px;
+
             text-align: center;
+
+            font-size:
+                clamp(
+                    3rem,
+                    10vw,
+                    5.2rem
+                );
+
+            line-height: .92;
+            letter-spacing: -.045em;
+            font-weight: normal;
+        }
+
+
+        .cover-title span {
+            display: block;
+        }
+
+
+        .cover-subtitle {
+            position: relative;
+            z-index: 2;
+
+            text-align: center;
+
+            color: #cdbca7;
+            font-style: italic;
+        }
+
+
+        .cover-ornament {
+            position: relative;
+            z-index: 2;
+
+            display: flex;
+            align-items: center;
+            gap: 14px;
+
+            width: min(380px, 80%);
+
+            margin: 28px auto;
+        }
+
+
+        .cover-ornament::before,
+        .cover-ornament::after {
+            content: "";
+            flex: 1;
+            height: 1px;
+
+            background:
+                linear-gradient(
+                    90deg,
+                    transparent,
+                    var(--brass-light)
+                );
+        }
+
+
+        .cover-ornament::after {
+            transform: scaleX(-1);
+        }
+
+
+        .cover-ornament span {
+            color: var(--brass-light);
+            font-size: 1.5rem;
+        }
+
+
+        .login-copy {
+            position: relative;
+            z-index: 2;
+
+            max-width: 450px;
+
+            margin:
+                0 auto
+                26px;
+
+            text-align: center;
+
+            color: #cdbda9;
+            line-height: 1.65;
+        }
+
+
+        .book-cover label {
+            position: relative;
+            z-index: 2;
+
+            display: block;
+
+            margin:
+                18px
+                0
+                7px;
+
+            color: #bca991;
+
+            font-family:
+                Arial,
+                Helvetica,
+                sans-serif;
+
+            font-size: .73rem;
+            letter-spacing: .04em;
+        }
+
+
+        .book-cover input {
+            position: relative;
+            z-index: 2;
+
+            width: 100%;
+
+            padding:
+                15px
+                16px;
+
+            color: #f5eadc;
+
+            border:
+                1px solid
+                rgba(218,184,113,.28);
+
+            background:
+                rgba(255,255,255,.055);
+
+            border-radius: 2px;
+        }
+
+
+        #loginButton {
+            position: relative;
+            z-index: 2;
+
+            width: 100%;
+
+            margin-top: 24px;
+        }
+
+
+        #loginMessage {
+            position: relative;
+            z-index: 2;
+
+            min-height: 25px;
+            margin-top: 15px;
+
+            color: #d7b7a8;
+            text-align: center;
+            font-size: .9rem;
+        }
+
+
+        /* =========================================================
+           APP / AUFGESCHLAGENES BUCH
+        ========================================================= */
+
+        #appView {
+            display: none;
+        }
+
+
+        .desk {
+            width: 100%;
+            min-height: 100vh;
+
+            padding:
+                38px
+                20px
+                80px;
+        }
+
+
+        .book-shadow {
+            position: relative;
+
+            width:
+                min(
+                    1180px,
+                    100%
+                );
+
+            margin: 0 auto;
+        }
+
+
+        .open-book {
+            position: relative;
+
+            min-height: 820px;
+
+            padding:
+                58px
+                72px
+                56px;
+
+            overflow: hidden;
+
+            background:
+                linear-gradient(
+                    90deg,
+                    #f5e8d0 0%,
+                    #fff9ed 43%,
+                    #ead8b8 49.6%,
+                    #d9c29d 50%,
+                    #f1e2c7 50.5%,
+                    #fffaf0 58%,
+                    #f5e8d0 100%
+                );
+
+            border:
+                1px solid
+                rgba(85,54,27,.48);
+
+            border-radius:
+                18px 26px 26px 18px;
+
+            box-shadow:
+                var(--deep-shadow),
+                inset 0 0 95px rgba(113,73,31,.08);
+
+            transform-origin: center bottom;
+
+            animation:
+                bookOpen
+                1s
+                cubic-bezier(.14,.76,.2,1)
+                both;
+        }
+
+
+        @keyframes bookOpen {
+            0% {
+                opacity: 0;
+
+                transform:
+                    perspective(1500px)
+                    rotateX(10deg)
+                    scale(.965)
+                    translateY(20px);
+            }
+
+            100% {
+                opacity: 1;
+
+                transform:
+                    perspective(1500px)
+                    rotateX(0deg)
+                    scale(1)
+                    translateY(0);
+            }
+        }
+
+
+        .open-book::before {
+            content: "";
+
+            position: absolute;
+
+            top: 0;
+            bottom: 0;
+            left: 50%;
+
+            width: 54px;
+
+            transform: translateX(-50%);
+
+            pointer-events: none;
+
+            background:
+                radial-gradient(
+                    ellipse at center,
+                    rgba(65,40,19,.20),
+                    rgba(65,40,19,.075) 35%,
+                    transparent 70%
+                );
+
+            mix-blend-mode: multiply;
+        }
+
+
+        .open-book::after {
+            content: "";
+
+            position: absolute;
+
+            inset: 13px;
+
+            pointer-events: none;
+
+            border:
+                1px solid
+                rgba(160,116,57,.22);
+
+            border-radius:
+                12px 20px 20px 12px;
+        }
+
+
+        .page-edge-left,
+        .page-edge-right {
+            position: absolute;
+
+            top: 22px;
+            bottom: 22px;
+
+            width: 11px;
+
+            opacity: .52;
+
+            pointer-events: none;
+        }
+
+
+        .page-edge-left {
+            left: 7px;
+
+            border-right:
+                1px solid
+                rgba(112,72,34,.21);
+
+            box-shadow:
+                5px 0 10px
+                rgba(91,57,27,.08);
+        }
+
+
+        .page-edge-right {
+            right: 7px;
+
+            border-left:
+                1px solid
+                rgba(112,72,34,.21);
+
+            box-shadow:
+                -5px 0 10px
+                rgba(91,57,27,.08);
+        }
+
+
+        .book-content {
+            position: relative;
+            z-index: 5;
+        }
+
+
+        /* =========================================================
+           TITEL
+        ========================================================= */
+
+        .book-kicker {
+            text-align: center;
+
+            color: var(--brass);
 
             font-family:
                 Arial,
@@ -272,128 +790,130 @@
             text-transform: uppercase;
             letter-spacing: .32em;
             font-size: .61rem;
-            color: var(--gold);
-
-            opacity: .92;
         }
 
 
-        .main-title {
+        .book-title {
             margin:
-                15px
+                12px
                 0
                 8px;
 
             text-align: center;
 
-            font-weight: normal;
-
             font-size:
                 clamp(
-                    3rem,
+                    3.1rem,
                     7vw,
-                    5.35rem
+                    5.1rem
                 );
 
+            line-height: .96;
             letter-spacing: -.045em;
-            line-height: .92;
+            font-weight: normal;
         }
 
 
-        .main-title span {
-            display: block;
-        }
-
-
-        .title-subline {
+        .book-subtitle {
             text-align: center;
+
             color: var(--ink-soft);
-            font-size: 1.06rem;
+
+            font-size: 1.03rem;
             font-style: italic;
-            letter-spacing: .02em;
         }
 
 
-        /* =====================================================
+        /* =========================================================
            ORNAMENT
-        ====================================================== */
+        ========================================================= */
 
-        .ornament {
-            width: min(420px, 80%);
-            margin: 30px auto 35px;
+        .gold-ornament {
+            position: relative;
 
             display: flex;
             align-items: center;
             justify-content: center;
             gap: 16px;
 
-            color: var(--gold);
+            width:
+                min(
+                    420px,
+                    82%
+                );
 
-            opacity: .93;
+            margin:
+                27px
+                auto
+                30px;
+
+            color: var(--brass);
         }
 
 
-        .ornament::before,
-        .ornament::after {
+        .gold-ornament::before,
+        .gold-ornament::after {
             content: "";
+
             flex: 1;
+
             height: 1px;
 
             background:
                 linear-gradient(
                     90deg,
                     transparent,
-                    var(--gold-bright)
+                    var(--brass-light)
                 );
         }
 
 
-        .ornament::after {
+        .gold-ornament::after {
             transform: scaleX(-1);
         }
 
 
-        .ornament-symbol {
-            position: relative;
+        .gold-ornament span {
             font-size: 1.5rem;
 
             animation:
-                ornamentBreathe
-                5s
+                goldGlint
+                4.5s
                 ease-in-out
                 infinite;
         }
 
 
-        @keyframes ornamentBreathe {
+        @keyframes goldGlint {
             0%,
             100% {
-                opacity: .72;
-                transform: scale(.96);
+                opacity: .65;
+                filter: brightness(.9);
             }
 
             50% {
                 opacity: 1;
-                transform: scale(1.04);
+                filter: brightness(1.3);
             }
         }
 
 
-        /* =====================================================
-           NAVIGATION ALS KAPITEL
-        ====================================================== */
+        /* =========================================================
+           KAPITEL-NAVIGATION
+        ========================================================= */
 
         .chapter-nav {
             position: relative;
 
             display: flex;
             justify-content: center;
-            gap: 5px;
+            gap: 10px;
+
+            max-width: 720px;
 
             margin:
-                0
-                auto
-                44px;
+                0 auto
+                42px;
 
             padding:
                 11px
@@ -407,36 +927,19 @@
         }
 
 
-        .chapter-nav::before,
-        .chapter-nav::after {
-            content: "◆";
-            position: absolute;
-            top: 50%;
-            transform: translateY(-52%);
-            color: var(--gold-pale);
-            font-size: .42rem;
-        }
-
-
-        .chapter-nav::before {
-            left: 4px;
-        }
-
-
-        .chapter-nav::after {
-            right: 4px;
-        }
-
-
         .chapter-nav button {
             position: relative;
 
-            border: none;
-            background: transparent;
+            min-width: 150px;
 
             padding:
                 12px
-                25px;
+                22px;
+
+            border: none;
+            border-radius: 999px;
+
+            background: transparent;
 
             color: var(--ink-soft);
 
@@ -445,43 +948,67 @@
                 Helvetica,
                 sans-serif;
 
-            font-size: .83rem;
-            letter-spacing: .055em;
-
-            border-radius: 999px;
+            font-size: .84rem;
+            letter-spacing: .04em;
 
             transition:
-                color .25s ease,
-                background .25s ease,
-                transform .25s ease;
+                transform .22s ease,
+                color .22s ease,
+                background .22s ease,
+                box-shadow .22s ease;
         }
 
 
-        .chapter-nav button:hover {
-            color: var(--wine);
-            transform: translateY(-1px);
+        .chapter-nav button::after {
+            content: "";
+
+            position: absolute;
+
+            left: 25%;
+            right: 25%;
+            bottom: 5px;
+
+            height: 1px;
+
+            background:
+                var(--brass);
+
+            transform: scaleX(0);
+
+            transition:
+                transform .3s ease;
+        }
+
+
+        .chapter-nav button:hover::after {
+            transform: scaleX(1);
         }
 
 
         .chapter-nav button.active {
-            color: white;
+            color: #fff6e8;
 
             background:
                 linear-gradient(
                     135deg,
-                    var(--wine-soft),
-                    var(--wine-deep)
+                    var(--wine-light),
+                    var(--wine-dark)
                 );
 
             box-shadow:
-                0 7px 18px
-                rgba(72,38,36,.19);
+                0 8px 22px
+                rgba(67,31,30,.24);
         }
 
 
-        /* =====================================================
-           SEITEN / ANIMATION
-        ====================================================== */
+        .chapter-nav button.active::after {
+            display: none;
+        }
+
+
+        /* =========================================================
+           VIEW TRANSITIONS
+        ========================================================= */
 
         .view {
             display: none;
@@ -492,32 +1019,42 @@
             display: block;
 
             animation:
-                pageReveal
-                .52s
-                cubic-bezier(.2,.7,.2,1)
+                pageTurn
+                .65s
+                cubic-bezier(.18,.72,.2,1)
                 both;
         }
 
 
-        @keyframes pageReveal {
+        @keyframes pageTurn {
             from {
                 opacity: 0;
+
                 transform:
-                    translateY(10px);
+                    perspective(1000px)
+                    rotateY(-2deg)
+                    translateX(10px);
             }
 
             to {
                 opacity: 1;
+
                 transform:
-                    translateY(0);
+                    perspective(1000px)
+                    rotateY(0)
+                    translateX(0);
             }
         }
 
 
+        /* =========================================================
+           TYPOGRAFIE
+        ========================================================= */
+
         .chapter-label {
             text-align: center;
 
-            color: var(--gold);
+            color: var(--brass);
 
             font-family:
                 Arial,
@@ -525,13 +1062,14 @@
                 sans-serif;
 
             font-size: .62rem;
-            letter-spacing: .23em;
+            letter-spacing: .24em;
             text-transform: uppercase;
         }
 
 
         .chapter-title {
-            max-width: 780px;
+            max-width: 790px;
+
             margin:
                 10px
                 auto
@@ -541,161 +1079,156 @@
 
             font-size:
                 clamp(
-                    1.9rem,
+                    2rem,
                     4vw,
-                    2.85rem
+                    3rem
                 );
 
-            line-height: 1.15;
+            line-height: 1.17;
             font-weight: normal;
         }
 
 
         .chapter-copy {
-            max-width: 650px;
+            max-width: 670px;
+
             margin:
-                0
-                auto
+                0 auto
                 35px;
 
-            text-align: center;
             color: var(--ink-soft);
 
-            font-size: 1rem;
+            text-align: center;
             line-height: 1.7;
         }
 
 
-        /* =====================================================
-           STARTAUSWAHL
-        ====================================================== */
+        /* =========================================================
+           ERZÄHL-STARTSEITE
+        ========================================================= */
 
-        .choice-grid {
+        .opening-spread {
             display: grid;
 
             grid-template-columns:
-                repeat(2, minmax(0, 1fr));
+                1fr
+                1fr;
 
-            gap: 28px;
+            gap: 72px;
 
-            max-width: 800px;
-            margin: 38px auto 10px;
+            max-width: 980px;
+            margin: 0 auto;
         }
 
 
-        .choice {
+        .opening-half {
             position: relative;
 
+            min-height: 355px;
+
             padding:
-                38px
-                30px
-                34px;
+                25px
+                31px;
+
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
 
             text-align: center;
+        }
+
+
+        .opening-half:first-child::after {
+            content: "";
+
+            position: absolute;
+
+            top: 8%;
+            right: -37px;
+            bottom: 8%;
+
+            width: 1px;
 
             background:
                 linear-gradient(
-                    145deg,
-                    rgba(255,250,240,.65),
-                    rgba(236,217,184,.22)
+                    transparent,
+                    rgba(129,91,45,.23),
+                    transparent
                 );
-
-            border:
-                1px solid
-                rgba(138,94,45,.22);
-
-            box-shadow:
-                0 14px 34px
-                rgba(68,43,23,.07);
-
-            overflow: hidden;
-
-            transition:
-                transform .28s ease,
-                box-shadow .28s ease,
-                border-color .28s ease;
         }
 
 
-        .choice::before {
-            content: "";
-            position: absolute;
-            inset: 8px;
+        .large-initial {
+            width: 72px;
+            height: 72px;
 
-            border:
-                1px solid
-                rgba(157,116,53,.11);
-
-            pointer-events: none;
-        }
-
-
-        .choice:hover {
-            transform:
-                translateY(-5px);
-
-            border-color:
-                rgba(157,116,53,.38);
-
-            box-shadow:
-                0 20px 40px
-                rgba(68,43,23,.11);
-        }
-
-
-        .choice-symbol {
-            display: inline-flex;
+            display: flex;
             align-items: center;
             justify-content: center;
 
-            width: 62px;
-            height: 62px;
+            margin-bottom: 20px;
 
             border-radius: 50%;
 
-            color: var(--gold);
-
             border:
                 1px solid
-                rgba(157,116,53,.36);
+                rgba(167,122,52,.45);
+
+            color: var(--brass);
 
             font-size: 2rem;
 
-            background:
-                rgba(255,250,239,.55);
+            box-shadow:
+                0 0 0 6px rgba(167,122,52,.04);
 
-            margin-bottom: 5px;
+            transition:
+                transform .3s ease,
+                box-shadow .3s ease;
         }
 
 
-        .choice h3 {
-            margin:
-                15px
-                0
-                9px;
+        .opening-half:hover
+        .large-initial {
+            transform:
+                translateY(-4px)
+                rotate(-3deg);
 
-            font-size: 1.55rem;
+            box-shadow:
+                0 0 0 9px
+                rgba(167,122,52,.07);
+        }
+
+
+        .opening-half h3 {
+            margin:
+                0
+                0
+                12px;
+
+            font-size: 1.7rem;
             font-weight: normal;
         }
 
 
-        .choice p {
-            min-height: 76px;
+        .opening-half p {
+            max-width: 350px;
 
             margin:
                 0
                 auto
-                21px;
+                24px;
+
+            min-height: 92px;
 
             color: var(--ink-soft);
-            line-height: 1.58;
-            font-size: .94rem;
+            line-height: 1.62;
         }
 
 
-        /* =====================================================
+        /* =========================================================
            BUTTONS
-        ====================================================== */
+        ========================================================= */
 
         .primary,
         .secondary,
@@ -704,7 +1237,7 @@
 
             padding:
                 13px
-                24px;
+                25px;
 
             border-radius: 999px;
 
@@ -716,22 +1249,22 @@
 
 
         .primary {
-            color: white;
+            color: #fff8ed;
 
             border:
                 1px solid
-                rgba(82,43,40,.9);
+                rgba(70,31,30,.94);
 
             background:
                 linear-gradient(
                     135deg,
-                    var(--wine-soft),
-                    var(--wine-deep)
+                    var(--wine-light),
+                    var(--wine-dark)
                 );
 
             box-shadow:
-                0 9px 20px
-                rgba(78,40,37,.18);
+                0 10px 22px
+                rgba(71,32,31,.20);
         }
 
 
@@ -739,8 +1272,8 @@
             transform: translateY(-2px);
 
             box-shadow:
-                0 13px 26px
-                rgba(78,40,37,.24);
+                0 14px 29px
+                rgba(71,32,31,.28);
         }
 
 
@@ -749,17 +1282,23 @@
 
             border:
                 1px solid
-                rgba(157,116,53,.58);
+                rgba(167,122,52,.62);
 
             background:
-                rgba(255,249,237,.3);
+                linear-gradient(
+                    180deg,
+                    rgba(255,253,247,.65),
+                    rgba(226,205,165,.20)
+                );
         }
 
 
         .secondary:hover {
             transform: translateY(-2px);
-            background:
-                rgba(255,249,237,.75);
+
+            box-shadow:
+                0 10px 22px
+                rgba(89,59,29,.10);
         }
 
 
@@ -768,7 +1307,7 @@
 
             border:
                 1px solid
-                rgba(101,56,53,.42);
+                rgba(109,53,52,.42);
 
             background: transparent;
         }
@@ -776,17 +1315,17 @@
 
         .danger:hover {
             background:
-                rgba(101,56,53,.06);
+                rgba(109,53,52,.06);
         }
 
 
         .text-button {
             padding:
                 9px
-                14px;
+                13px;
 
             border: none;
-            background: none;
+            background: transparent;
 
             color: var(--ink-soft);
 
@@ -794,7 +1333,7 @@
 
             text-decoration: underline;
             text-decoration-color:
-                rgba(108,92,78,.43);
+                rgba(118,100,84,.4);
 
             text-underline-offset: 5px;
         }
@@ -805,24 +1344,25 @@
         }
 
 
-        /* =====================================================
-           FRAGE / ERZÄHLSEITE
-        ====================================================== */
+        /* =========================================================
+           FRAGE / AUFNAHME
+        ========================================================= */
 
         #storyView {
             display: none;
         }
 
 
-        .story-page {
+        .story-sheet {
             position: relative;
 
-            margin-top: 28px;
+            max-width: 900px;
+            margin: 0 auto;
 
             padding:
-                43px
-                30px
-                20px;
+                36px
+                25px
+                25px;
 
             border-top:
                 1px solid var(--line);
@@ -832,79 +1372,76 @@
         }
 
 
-        .story-page::before {
-            content: "❧";
+        .story-sheet::before {
+            content: "❦";
 
             position: absolute;
-            top: -16px;
+
+            top: -17px;
             left: 50%;
 
-            transform:
-                translateX(-50%);
+            transform: translateX(-50%);
 
-            padding:
-                0
-                14px;
+            padding: 0 15px;
 
-            background:
-                var(--paper);
+            color: var(--brass-light);
 
-            color:
-                var(--gold-pale);
+            background: #f9efd9;
 
-            font-size: 1.35rem;
+            font-size: 1.4rem;
         }
 
 
         .question-intro {
             text-align: center;
 
+            color: var(--brass);
+
             font-family:
                 Arial,
                 Helvetica,
                 sans-serif;
 
-            color: var(--gold);
-
-            font-size: .63rem;
-            letter-spacing: .21em;
+            font-size: .62rem;
+            letter-spacing: .22em;
             text-transform: uppercase;
         }
 
 
         #question {
-            max-width: 790px;
+            max-width: 780px;
 
             margin:
-                20px
+                18px
                 auto
-                5px;
-
-            text-align: center;
-
-            font-style: italic;
-
-            font-size:
-                clamp(
-                    1.9rem,
-                    4.6vw,
-                    2.9rem
-                );
-
-            line-height: 1.34;
-        }
-
-
-        .free-title {
-            margin: 0;
+                8px;
 
             text-align: center;
 
             font-size:
                 clamp(
                     1.95rem,
+                    4.6vw,
+                    3rem
+                );
+
+            font-style: italic;
+            line-height: 1.34;
+        }
+
+
+        .free-title {
+            margin:
+                0
+                auto;
+
+            text-align: center;
+
+            font-size:
+                clamp(
+                    2rem,
                     4vw,
-                    2.75rem
+                    2.85rem
                 );
 
             font-weight: normal;
@@ -912,76 +1449,87 @@
 
 
         .free-copy {
-            max-width: 630px;
+            max-width: 620px;
 
             margin:
                 15px
                 auto
                 0;
 
+            color: var(--ink-soft);
+
             text-align: center;
-
-            color:
-                var(--ink-soft);
-
-            line-height: 1.7;
+            line-height: 1.68;
         }
 
 
-        /* =====================================================
-           MIKROFON HIGH CLASS
-        ====================================================== */
+        /* =========================================================
+           MESSING-MIKROFON
+        ========================================================= */
 
         .record-zone {
-            position: relative;
             text-align: center;
 
             padding:
-                43px
+                38px
                 0
-                4px;
+                5px;
         }
 
 
         .record-stage {
             position: relative;
 
-            width: 210px;
-            height: 210px;
+            width: 230px;
+            height: 230px;
 
             margin: 0 auto;
         }
 
 
-        .record-halo {
+        .brass-ring {
             position: absolute;
-            inset: 7px;
+
+            inset: 11px;
 
             border-radius: 50%;
 
             border:
                 1px solid
-                rgba(157,116,53,.32);
+                rgba(167,122,52,.48);
 
-            pointer-events: none;
+            box-shadow:
+                inset 0 0 15px rgba(167,122,52,.10),
+                0 0 20px rgba(167,122,52,.08);
 
             animation:
-                haloIdle
-                5s
+                brassBreath
+                4s
                 ease-in-out
                 infinite;
         }
 
 
-        @keyframes haloIdle {
+        .brass-ring.two {
+            inset: 27px;
+
+            border-color:
+                rgba(167,122,52,.20);
+
+            animation-delay:
+                -1.4s;
+        }
+
+
+        @keyframes brassBreath {
             0%,
             100% {
                 transform: scale(.97);
-                opacity: .55;
+                opacity: .48;
             }
 
             50% {
-                transform: scale(1.03);
+                transform: scale(1.035);
                 opacity: 1;
             }
         }
@@ -993,152 +1541,156 @@
             left: 50%;
             top: 50%;
 
+            width: 160px;
+            height: 160px;
+
             transform:
                 translate(-50%, -50%);
 
-            width: 158px;
-            height: 158px;
-
             border-radius: 50%;
 
-            border:
-                1px solid
-                rgba(77,39,36,.9);
+            color: #fff8e8;
 
-            color: white;
+            border:
+                2px solid
+                #6e4d22;
 
             background:
                 radial-gradient(
-                    circle at 34% 28%,
-                    #97625d,
-                    var(--wine) 53%,
-                    var(--wine-deep) 100%
+                    circle at 34% 25%,
+                    #e6c980,
+                    #af813b 38%,
+                    #76501f 70%,
+                    #412a11 100%
                 );
 
             box-shadow:
-                0 16px 34px
-                rgba(72,36,33,.29),
-                inset 0 1px 0
-                rgba(255,255,255,.2),
-                inset 0 -8px 18px
-                rgba(45,21,20,.12);
+                0 18px 34px
+                rgba(52,31,12,.32),
+
+                inset
+                0 2px 2px
+                rgba(255,244,194,.75),
+
+                inset
+                0 -9px 17px
+                rgba(50,28,8,.34),
+
+                0 0 0 5px
+                rgba(255,246,214,.18);
+
+            z-index: 3;
 
             transition:
-                transform .2s ease,
-                box-shadow .2s ease;
-
-            z-index: 2;
+                transform .18s ease,
+                filter .18s ease;
         }
 
 
         #recordButton:hover {
             transform:
                 translate(-50%, -50%)
-                scale(1.025);
+                scale(1.035);
 
-            box-shadow:
-                0 20px 42px
-                rgba(72,36,33,.33),
-                inset 0 1px 0
-                rgba(255,255,255,.2);
-        }
-
-
-        #recordButton::before {
-            content: "";
-
-            position: absolute;
-            inset: -11px;
-
-            border-radius: 50%;
-
-            border:
-                1px solid
-                rgba(194,155,88,.58);
+            filter:
+                brightness(1.06);
         }
 
 
         #recordButton.recording {
             background:
                 radial-gradient(
-                    circle at 34% 28%,
-                    #a1665f,
-                    #713b37 53%,
-                    #482521 100%
+                    circle at 34% 25%,
+                    #b8736c,
+                    #783c39 45%,
+                    #441e1d 100%
                 );
+
+            border-color:
+                #502421;
         }
 
 
+        #recordButton.recording
+        ~ .record-wave {
+            opacity: 1;
+        }
+
+
+        #recordButton.recording::before,
         #recordButton.recording::after {
             content: "";
 
             position: absolute;
-            inset: -25px;
+            inset: -20px;
 
             border-radius: 50%;
 
             border:
                 2px solid
-                rgba(119,63,59,.42);
+                rgba(109,53,52,.42);
 
             animation:
-                recordPulse
-                1.65s
-                cubic-bezier(.2,.7,.2,1)
+                recordingPulse
+                1.7s
+                ease-out
                 infinite;
         }
 
 
-        @keyframes recordPulse {
-            0% {
-                opacity: .82;
+        #recordButton.recording::after {
+            animation-delay: .55s;
+        }
+
+
+        @keyframes recordingPulse {
+            from {
                 transform: scale(.86);
+                opacity: .9;
             }
 
-            72% {
+            to {
+                transform: scale(1.28);
                 opacity: 0;
-                transform: scale(1.13);
-            }
-
-            100% {
-                opacity: 0;
-                transform: scale(1.13);
             }
         }
 
 
-        .mic-icon {
+        .mic-svg {
             display: block;
-            font-size: 3rem;
-            line-height: 1;
+
+            width: 48px;
+            height: 48px;
+
+            margin:
+                0 auto
+                7px;
+
+            fill: none;
+
+            stroke: currentColor;
+            stroke-width: 1.8;
         }
 
 
         #micText {
             display: block;
 
-            margin-top: 9px;
-
             font-family:
                 Arial,
                 Helvetica,
                 sans-serif;
 
-            font-size: .86rem;
-            font-weight: 700;
-            letter-spacing: .03em;
+            font-size: .84rem;
+            font-weight: bold;
+            letter-spacing: .04em;
         }
 
 
         #recordingFeedback {
             display: none;
 
-            max-width: 600px;
-
-            margin:
-                3px
-                auto
-                0;
+            margin-top: 0;
         }
 
 
@@ -1149,17 +1701,17 @@
             font-style: italic;
 
             animation:
-                listeningGlow
-                2.3s
+                listenGlow
+                1.8s
                 ease-in-out
                 infinite;
         }
 
 
-        @keyframes listeningGlow {
+        @keyframes listenGlow {
             0%,
             100% {
-                opacity: .68;
+                opacity: .55;
             }
 
             50% {
@@ -1169,17 +1721,17 @@
 
 
         #recordingTime {
-            margin-top: 8px;
+            margin-top: 7px;
 
-            color:
-                var(--ink-soft);
+            color: var(--ink-soft);
 
             font-family:
                 Arial,
                 Helvetica,
                 sans-serif;
 
-            font-size: .86rem;
+            font-size: .84rem;
+
             font-variant-numeric:
                 tabular-nums;
         }
@@ -1189,12 +1741,15 @@
             display: block;
 
             width:
-                min(100%, 560px);
+                min(
+                    100%,
+                    570px
+                );
 
             height: 88px;
 
             margin:
-                16px
+                13px
                 auto
                 0;
         }
@@ -1204,42 +1759,40 @@
             display: flex;
             flex-wrap: wrap;
             justify-content: center;
-            gap: 3px;
+            gap: 2px;
 
-            margin-top: 16px;
+            margin-top: 13px;
         }
 
 
         #status {
-            min-height: 30px;
+            min-height: 28px;
 
-            margin-top: 17px;
+            margin-top: 15px;
 
             text-align: center;
-
             color: var(--ink-soft);
 
-            font-size: .97rem;
             font-style: italic;
         }
 
 
-        /* =====================================================
+        /* =========================================================
            VERARBEITUNG
-        ====================================================== */
+        ========================================================= */
 
         #processingBox {
             display: none;
 
-            max-width: 680px;
+            max-width: 690px;
 
             margin:
-                45px
+                47px
                 auto;
 
             padding:
-                41px
-                20px;
+                43px
+                24px;
 
             text-align: center;
 
@@ -1248,131 +1801,97 @@
 
             border-bottom:
                 1px solid var(--line);
-
-            animation:
-                pageReveal .5s ease both;
         }
 
 
         #processingBox h2 {
-            margin: 0;
+            margin:
+                9px
+                0
+                15px;
 
             font-size: 1.8rem;
             font-weight: normal;
         }
 
 
-        .writing-line {
-            width: 160px;
+        .quill {
+            width: 58px;
+            height: 58px;
+
+            margin:
+                6px
+                auto
+                17px;
+
+            color: var(--brass);
+
+            animation:
+                quillWrite
+                2s
+                ease-in-out
+                infinite;
+        }
+
+
+        @keyframes quillWrite {
+            0%,
+            100% {
+                transform:
+                    translateX(-5px)
+                    rotate(-7deg);
+            }
+
+            50% {
+                transform:
+                    translateX(7px)
+                    rotate(3deg);
+            }
+        }
+
+
+        .processing-line {
+            width: 190px;
             height: 1px;
 
             margin:
-                24px
+                19px
                 auto;
 
             overflow: hidden;
 
             background:
-                rgba(157,116,53,.18);
+                rgba(167,122,52,.17);
         }
 
 
-        .writing-line::after {
+        .processing-line::after {
             content: "";
+
             display: block;
 
-            width: 75px;
+            width: 78px;
             height: 100%;
 
             background:
                 linear-gradient(
                     90deg,
                     transparent,
-                    var(--gold-bright),
+                    var(--brass-light),
                     transparent
                 );
 
             animation:
-                writingLine
-                1.45s
+                lineTravel
+                1.4s
                 ease-in-out
                 infinite;
         }
 
 
-        @keyframes writingLine {
-            from {
-                transform:
-                    translateX(-80px);
-            }
-
-            to {
-                transform:
-                    translateX(190px);
-            }
-        }
-
-
-        .dots {
-            display: flex;
-            justify-content: center;
-            gap: 10px;
-
-            margin: 20px;
-        }
-
-
-        .dots span {
-            width: 9px;
-            height: 9px;
-
-            border-radius: 50%;
-
-            background:
-                var(--gold);
-
-            animation:
-                dotsMove
-                1.35s
-                ease-in-out
-                infinite;
-        }
-
-
-        .dots span:nth-child(2) {
-            animation-delay: .16s;
-        }
-
-
-        .dots span:nth-child(3) {
-            animation-delay: .32s;
-        }
-
-
-        @keyframes dotsMove {
-            0%,
-            80%,
-            100% {
-                transform:
-                    translateY(0)
-                    scale(.8);
-
-                opacity: .35;
-            }
-
-            40% {
-                transform:
-                    translateY(-7px)
-                    scale(1);
-
-                opacity: 1;
-            }
-        }
-
-
-        /* =====================================================
-           REVIEW
-        ====================================================== */
+        /* =========================================================
+           TRANSKRIPT / ZUSAMMENFASSUNG
+        ========================================================= */
 
         #reviewArea,
         #afterSaveArea {
@@ -1381,21 +1900,19 @@
 
 
         .section-heading {
-            position: relative;
-
             text-align: center;
 
             margin:
-                48px
+                47px
                 0
-                18px;
+                17px;
         }
 
 
         .section-heading small {
             display: block;
 
-            color: var(--gold);
+            color: var(--brass);
 
             font-family:
                 Arial,
@@ -1405,7 +1922,7 @@
             text-transform: uppercase;
             letter-spacing: .2em;
 
-            font-size: .6rem;
+            font-size: .59rem;
         }
 
 
@@ -1421,33 +1938,30 @@
 
 
         #transcript {
-            max-width: 780px;
+            max-width: 820px;
 
             margin: 0 auto;
 
             padding:
-                26px
-                34px
-                31px;
+                27px
+                38px;
 
             font-size: 1.18rem;
-            line-height: 1.87;
+            line-height: 1.88;
             white-space: pre-wrap;
+
+            border-top:
+                1px solid var(--line);
+
+            border-bottom:
+                1px solid var(--line);
 
             background:
                 linear-gradient(
                     180deg,
-                    rgba(255,252,246,.38),
+                    rgba(255,255,255,.25),
                     transparent
                 );
-
-            border-top:
-                1px solid
-                var(--line-light);
-
-            border-bottom:
-                1px solid
-                var(--line-light);
         }
 
 
@@ -1455,14 +1969,14 @@
             float: left;
 
             padding:
-                10px
-                10px
+                11px
+                11px
                 0
                 0;
 
             color: var(--wine);
 
-            font-size: 4.45rem;
+            font-size: 4.7rem;
             line-height: .67;
         }
 
@@ -1470,66 +1984,64 @@
         #summary {
             position: relative;
 
-            max-width: 680px;
+            max-width: 700px;
 
             margin:
                 22px
                 auto
-                5px;
+                0;
 
             padding:
-                27px
-                34px;
+                28px
+                36px;
 
-            color: #59493e;
-            line-height: 1.68;
+            color: #594838;
+            line-height: 1.69;
 
             background:
                 linear-gradient(
-                    135deg,
-                    rgba(226,203,158,.38),
-                    rgba(255,248,232,.52)
+                    145deg,
+                    rgba(225,198,145,.42),
+                    rgba(255,250,235,.58)
                 );
 
             border-left:
-                3px solid
-                var(--gold);
+                4px solid var(--brass);
 
             box-shadow:
-                var(--shadow-soft);
+                var(--page-shadow);
 
-            transform:
-                rotate(-.18deg);
+            transform: rotate(-.18deg);
         }
 
 
         #summary::before {
-            content: "✧";
+            content: "✦";
 
             position: absolute;
-            top: 10px;
-            right: 14px;
+
+            right: 16px;
+            top: 12px;
 
             color:
-                rgba(157,116,53,.48);
+                rgba(167,122,52,.45);
         }
 
 
         .decision {
-            max-width: 760px;
+            max-width: 770px;
 
             margin:
-                46px
+                47px
                 auto
                 0;
 
-            padding-top: 32px;
+            padding-top: 31px;
 
             text-align: center;
 
             border-top:
-                1px solid
-                var(--line);
+                1px solid var(--line);
         }
 
 
@@ -1539,63 +2051,65 @@
                 0
                 23px;
 
-            font-size: 1.47rem;
+            font-size: 1.48rem;
             font-weight: normal;
         }
 
 
         .button-row {
             display: flex;
-            flex-wrap: wrap;
             justify-content: center;
+            flex-wrap: wrap;
             gap: 11px;
         }
 
 
-        /* =====================================================
-           GESPEICHERT
-        ====================================================== */
+        /* =========================================================
+           SPEICHERN / SIEGEL
+        ========================================================= */
 
         #savedMessage {
             display: none;
+
             position: relative;
 
-            max-width: 700px;
+            max-width: 720px;
 
             margin:
-                42px
+                43px
                 auto
-                30px;
+                31px;
 
             padding:
                 27px
                 30px;
 
             text-align: center;
+
             color: var(--forest);
 
             border-top:
                 1px solid
-                rgba(52,72,59,.25);
+                rgba(61,81,68,.28);
 
             border-bottom:
                 1px solid
-                rgba(52,72,59,.25);
+                rgba(61,81,68,.28);
 
             animation:
-                sealReveal
-                .7s
-                cubic-bezier(.2,.75,.2,1)
+                sealDrop
+                .75s
+                cubic-bezier(.2,.8,.2,1)
                 both;
         }
 
 
-        @keyframes sealReveal {
+        @keyframes sealDrop {
             from {
                 opacity: 0;
                 transform:
-                    scale(.96)
-                    translateY(5px);
+                    scale(1.08)
+                    translateY(-7px);
             }
 
             to {
@@ -1608,37 +2122,41 @@
 
 
         #savedMessage::before {
-            content: "✓";
+            content: "R";
 
             display: inline-flex;
 
             align-items: center;
             justify-content: center;
 
-            width: 31px;
-            height: 31px;
+            width: 38px;
+            height: 38px;
 
-            margin-right: 8px;
+            margin-right: 11px;
+
+            color: #744039;
 
             border:
-                1px solid
-                rgba(52,72,59,.48);
+                2px solid
+                rgba(116,64,57,.65);
 
             border-radius: 50%;
 
-            font-family:
-                Arial,
-                Helvetica,
-                sans-serif;
+            font-size: 1.1rem;
+            font-style: italic;
 
-            font-size: .82rem;
+            box-shadow:
+                inset 0 0 0 3px
+                rgba(116,64,57,.08);
+
+            transform: rotate(-8deg);
         }
 
 
         .special-box {
             position: relative;
 
-            max-width: 720px;
+            max-width: 730px;
 
             margin:
                 34px
@@ -1646,51 +2164,52 @@
                 0;
 
             padding:
-                34px
-                35px;
+                36px
+                38px;
 
             background:
                 linear-gradient(
-                    135deg,
-                    rgba(239,224,193,.56),
-                    rgba(255,249,238,.46)
+                    145deg,
+                    rgba(239,222,187,.62),
+                    rgba(255,251,240,.52)
                 );
 
             border:
                 1px solid
-                var(--line);
+                rgba(129,91,45,.25);
 
             box-shadow:
-                0 10px 30px
-                rgba(62,42,24,.06);
-
-            animation:
-                pageReveal .45s ease both;
+                0 12px 30px
+                rgba(64,42,23,.07);
         }
 
 
         .special-box::before {
             content: "";
+
             position: absolute;
-            inset: 7px;
+            inset: 8px;
 
             border:
                 1px solid
-                rgba(157,116,53,.1);
+                rgba(167,122,52,.10);
 
             pointer-events: none;
         }
 
 
         .special-box h3 {
+            position: relative;
+            z-index: 2;
+
             margin:
-                0
+                8px
                 0
                 15px;
 
             text-align: center;
 
-            font-size: 1.5rem;
+            font-size: 1.52rem;
             font-weight: normal;
         }
 
@@ -1701,30 +2220,33 @@
 
 
         #followUpQuestion {
-            max-width: 630px;
+            position: relative;
+            z-index: 2;
+
+            max-width: 640px;
 
             margin:
                 18px
                 auto
-                26px;
+                27px;
 
             text-align: center;
 
-            font-size: 1.47rem;
+            font-size: 1.48rem;
             font-style: italic;
             line-height: 1.55;
         }
 
 
-        /* =====================================================
-           ARCHIV
-        ====================================================== */
+        /* =========================================================
+           ERINNERUNGEN
+        ========================================================= */
 
         .archive-toolbar {
-            max-width: 670px;
+            max-width: 680px;
 
             margin:
-                27px
+                28px
                 auto
                 37px;
         }
@@ -1737,33 +2259,25 @@
                 15px
                 22px;
 
-            border-radius: 999px;
-
             border:
                 1px solid
-                rgba(138,94,45,.28);
+                var(--line);
+
+            border-radius: 999px;
 
             color: var(--ink);
 
             background:
-                rgba(255,250,241,.55);
+                rgba(255,253,246,.58);
 
             box-shadow:
                 inset 0 1px 5px
-                rgba(73,50,27,.04);
-        }
-
-
-        .archive-toolbar input::placeholder {
-            color: #a0907c;
+                rgba(63,42,22,.04);
         }
 
 
         #archiveList {
-            display: grid;
-            gap: 0;
-
-            max-width: 800px;
+            max-width: 830px;
             margin: 0 auto;
         }
 
@@ -1772,26 +2286,26 @@
             position: relative;
 
             padding:
-                28px
-                42px
+                27px
+                43px
                 29px;
-
-            cursor: pointer;
 
             border-top:
                 1px solid
-                var(--line-light);
+                var(--line);
+
+            cursor: pointer;
 
             transition:
-                background .25s ease,
-                transform .25s ease;
+                transform .25s ease,
+                background .25s ease;
         }
 
 
         .memory-card:last-child {
             border-bottom:
                 1px solid
-                var(--line-light);
+                var(--line);
         }
 
 
@@ -1801,29 +2315,25 @@
             position: absolute;
 
             left: 16px;
-            top: 34px;
+            top: 36px;
 
             width: 8px;
             height: 8px;
 
             transform: rotate(45deg);
 
-            border:
-                1px solid
-                var(--gold);
-
-            background: var(--paper);
+            background: var(--brass);
         }
 
 
         .memory-card:hover {
             transform:
-                translateX(5px);
+                translateX(7px);
 
             background:
                 linear-gradient(
                     90deg,
-                    rgba(255,248,233,.58),
+                    rgba(255,250,237,.72),
                     transparent
                 );
         }
@@ -1832,7 +2342,7 @@
         .memory-meta {
             margin-bottom: 8px;
 
-            color: var(--gold);
+            color: var(--brass);
 
             font-family:
                 Arial,
@@ -1840,16 +2350,16 @@
                 sans-serif;
 
             font-size: .61rem;
-            letter-spacing: .13em;
+            letter-spacing: .14em;
             text-transform: uppercase;
         }
 
 
         .memory-title {
-            margin-bottom: 9px;
+            margin-bottom: 8px;
 
-            font-size: 1.42rem;
-            line-height: 1.35;
+            font-size: 1.44rem;
+            line-height: 1.36;
         }
 
 
@@ -1868,14 +2378,13 @@
                 5px
                 10px;
 
+            color: #715221;
+
             border:
                 1px solid
-                rgba(157,116,53,.35);
+                rgba(167,122,52,.36);
 
             border-radius: 999px;
-
-            color:
-                #765824;
 
             font-family:
                 Arial,
@@ -1886,14 +2395,14 @@
         }
 
 
-        /* =====================================================
+        /* =========================================================
            ZEITREISE
-        ====================================================== */
+        ========================================================= */
 
         #timelineList {
             position: relative;
 
-            max-width: 800px;
+            max-width: 820px;
 
             margin:
                 43px
@@ -1907,7 +2416,8 @@
 
             position: absolute;
 
-            left: 100px;
+            left: 105px;
+
             top: 10px;
             bottom: 10px;
 
@@ -1915,8 +2425,8 @@
 
             background:
                 linear-gradient(
-                    var(--gold),
-                    rgba(157,116,53,.08)
+                    var(--brass),
+                    rgba(167,122,52,.08)
                 );
         }
 
@@ -1925,17 +2435,15 @@
             display: grid;
 
             grid-template-columns:
-                76px
-                48px
-                minmax(0, 1fr);
-
-            margin-bottom: 13px;
+                80px
+                50px
+                minmax(0,1fr);
 
             opacity: 0;
 
             animation:
                 timelineReveal
-                .55s
+                .65s
                 ease
                 forwards;
         }
@@ -1944,12 +2452,14 @@
         @keyframes timelineReveal {
             from {
                 opacity: 0;
+
                 transform:
-                    translateY(11px);
+                    translateY(16px);
             }
 
             to {
                 opacity: 1;
+
                 transform:
                     translateY(0);
             }
@@ -1963,9 +2473,7 @@
 
             color: var(--wine);
 
-            font-size: 1.28rem;
-            font-variant-numeric:
-                oldstyle-nums;
+            font-size: 1.32rem;
         }
 
 
@@ -1981,30 +2489,33 @@
             position: relative;
             z-index: 2;
 
-            width: 14px;
-            height: 14px;
+            width: 15px;
+            height: 15px;
 
             border-radius: 50%;
 
             background:
-                var(--wine);
+                radial-gradient(
+                    circle at 35% 30%,
+                    var(--brass-light),
+                    var(--brass)
+                );
 
             border:
                 3px solid
-                var(--paper);
+                #f6ead3;
 
             box-shadow:
                 0 0 0 1px
-                var(--gold);
+                var(--brass);
         }
 
 
         .timeline-memory {
             padding:
                 1px
-                8px
-                31px
-                8px;
+                10px
+                31px;
 
             cursor: pointer;
 
@@ -2015,7 +2526,7 @@
 
         .timeline-memory:hover {
             transform:
-                translateX(4px);
+                translateX(5px);
         }
 
 
@@ -2025,7 +2536,7 @@
                 0
                 7px;
 
-            font-size: 1.37rem;
+            font-size: 1.4rem;
             font-weight: normal;
         }
 
@@ -2033,22 +2544,20 @@
         .timeline-memory p {
             margin: 0;
 
-            color:
-                var(--ink-soft);
-
+            color: var(--ink-soft);
             line-height: 1.55;
         }
 
 
         .unknown-section {
-            max-width: 790px;
+            max-width: 820px;
 
             margin:
                 52px
                 auto
                 0;
 
-            padding-top: 28px;
+            padding-top: 29px;
 
             border-top:
                 1px solid
@@ -2063,15 +2572,15 @@
         }
 
 
-        /* =====================================================
-           ERINNERUNGSSEITE / MODAL
-        ====================================================== */
+        /* =========================================================
+           ERINNERUNG ALS BUCHSEITE
+        ========================================================= */
 
         #memoryDialog {
             display: none;
 
             position: fixed;
-            z-index: 200;
+            z-index: 500;
 
             inset: 0;
 
@@ -2082,64 +2591,68 @@
                 18px;
 
             background:
-                rgba(38,27,19,.72);
+                rgba(21,14,11,.82);
 
             backdrop-filter:
-                blur(4px);
+                blur(7px);
         }
 
 
         .dialog-page {
             position: relative;
 
-            max-width: 800px;
+            max-width: 820px;
 
             margin: 0 auto;
 
             padding:
-                57px
-                60px
-                54px;
+                58px
+                62px
+                55px;
 
             background:
                 repeating-linear-gradient(
                     0deg,
-                    rgba(111,76,40,.017) 0,
-                    rgba(111,76,40,.017) 1px,
+                    rgba(112,76,40,.016) 0,
+                    rgba(112,76,40,.016) 1px,
                     transparent 1px,
                     transparent 4px
                 ),
-                var(--paper-bright);
+                var(--paper-1);
 
             border:
                 1px solid
-                rgba(157,116,53,.42);
+                rgba(167,122,52,.42);
 
             box-shadow:
-                0 30px 100px
-                rgba(20,14,10,.48);
+                0 32px 110px
+                rgba(0,0,0,.55);
 
             animation:
-                dialogOpen
-                .5s
-                cubic-bezier(.2,.75,.2,1)
+                memoryOpen
+                .6s
+                cubic-bezier(.16,.78,.2,1)
                 both;
         }
 
 
-        @keyframes dialogOpen {
+        @keyframes memoryOpen {
             from {
                 opacity: 0;
 
                 transform:
+                    perspective(1200px)
+                    rotateY(-5deg)
                     translateY(20px)
-                    scale(.98);
+                    scale(.985);
             }
 
             to {
                 opacity: 1;
 
                 transform:
+                    perspective(1200px)
+                    rotateY(0)
                     translateY(0)
                     scale(1);
             }
@@ -2152,43 +2665,41 @@
             position: absolute;
             inset: 11px;
 
+            pointer-events: none;
+
             border:
                 1px solid
-                rgba(157,116,53,.2);
-
-            pointer-events: none;
+                rgba(167,122,52,.18);
         }
 
 
         .dialog-close {
             position: absolute;
+            z-index: 5;
 
-            right: 22px;
+            right: 21px;
             top: 18px;
 
-            width: 39px;
-            height: 39px;
+            width: 40px;
+            height: 40px;
 
             border-radius: 50%;
 
             border:
                 1px solid
-                rgba(108,92,78,.24);
+                rgba(118,100,84,.28);
 
-            color:
-                var(--ink-soft);
+            color: var(--ink-soft);
 
             background:
-                rgba(255,255,255,.3);
+                rgba(255,255,255,.36);
 
             font-family:
                 Arial,
                 Helvetica,
                 sans-serif;
 
-            font-size: 1.2rem;
-
-            z-index: 3;
+            font-size: 1.25rem;
         }
 
 
@@ -2203,18 +2714,17 @@
                 clamp(
                     2rem,
                     4vw,
-                    2.9rem
+                    2.95rem
                 );
 
-            font-weight: normal;
             line-height: 1.2;
+            font-weight: normal;
         }
 
 
         #dialogTime {
-            color: var(--gold);
+            color: var(--brass);
 
-            font-size: .93rem;
             font-style: italic;
         }
 
@@ -2223,39 +2733,36 @@
             margin:
                 26px
                 0
-                28px;
+                29px;
 
             padding:
                 19px
                 0;
 
-            border-top:
-                1px solid
-                var(--line-light);
-
-            border-bottom:
-                1px solid
-                var(--line-light);
-
-            color:
-                var(--ink-soft);
+            color: var(--ink-soft);
 
             font-style: italic;
             line-height: 1.65;
+
+            border-top:
+                1px solid
+                var(--line);
+
+            border-bottom:
+                1px solid
+                var(--line);
         }
 
 
         #dialogTranscript {
-            font-size: 1.08rem;
-            line-height: 1.85;
+            line-height: 1.86;
             white-space: pre-wrap;
         }
 
 
         .timeline-editor {
-            margin-top: 37px;
-
-            padding-top: 27px;
+            margin-top: 38px;
+            padding-top: 28px;
 
             border-top:
                 1px solid
@@ -2264,10 +2771,8 @@
 
 
         .timeline-editor h3 {
-            margin-top: 0;
-
-            font-size: 1.45rem;
             font-weight: normal;
+            font-size: 1.45rem;
         }
 
 
@@ -2279,8 +2784,7 @@
                 0
                 7px;
 
-            color:
-                var(--ink-soft);
+            color: var(--ink-soft);
 
             font-family:
                 Arial,
@@ -2288,7 +2792,6 @@
                 sans-serif;
 
             font-size: .74rem;
-            letter-spacing: .03em;
         }
 
 
@@ -2300,14 +2803,14 @@
                 13px
                 14px;
 
-            color: var(--ink);
-
             border:
                 1px solid
                 var(--line);
 
             background:
                 rgba(255,255,255,.62);
+
+            color: var(--ink);
         }
 
 
@@ -2316,194 +2819,16 @@
         }
 
 
-        /* =====================================================
-           LOGIN
-        ====================================================== */
-
-        #loginView {
-            max-width: 680px;
-
-            margin:
-                52px
-                auto;
-
-            padding:
-                18px;
-        }
-
-
-        .login-cover {
-            position: relative;
-
-            padding:
-                60px
-                56px;
-
-            color:
-                #eadfcf;
-
-            background:
-                repeating-linear-gradient(
-                    90deg,
-                    rgba(255,255,255,.018) 0,
-                    rgba(255,255,255,.018) 1px,
-                    transparent 1px,
-                    transparent 5px
-                ),
-                linear-gradient(
-                    145deg,
-                    #3b2d25,
-                    #211914
-                );
-
-            border:
-                1px solid
-                rgba(222,199,156,.34);
-
-            box-shadow:
-                0 32px 90px
-                rgba(38,24,13,.45);
-        }
-
-
-        .login-cover::before {
-            content: "";
-
-            position: absolute;
-            inset: 15px;
-
-            border:
-                1px solid
-                rgba(197,165,108,.3);
-
-            pointer-events: none;
-        }
-
-
-        .login-cover .kicker {
-            color:
-                var(--gold-bright);
-        }
-
-
-        .login-cover .main-title {
-            color:
-                #f2e8d8;
-        }
-
-
-        .login-cover .title-subline {
-            color:
-                #c9bba8;
-        }
-
-
-        .login-cover .ornament {
-            color:
-                var(--gold-bright);
-        }
-
-
-        .login-copy {
-            max-width: 460px;
-
-            margin:
-                0
-                auto
-                27px;
-
-            text-align: center;
-
-            color:
-                #c7b8a6;
-
-            line-height: 1.6;
-        }
-
-
-        .login-cover label {
-            display: block;
-
-            margin:
-                18px
-                0
-                7px;
-
-            color:
-                #baa994;
-
-            font-family:
-                Arial,
-                Helvetica,
-                sans-serif;
-
-            font-size: .74rem;
-            letter-spacing: .04em;
-        }
-
-
-        .login-cover input {
-            width: 100%;
-
-            padding:
-                15px
-                16px;
-
-            border:
-                1px solid
-                rgba(218,193,153,.26);
-
-            color:
-                #f5ebdc;
-
-            background:
-                rgba(255,255,255,.055);
-
-            border-radius: 2px;
-        }
-
-
-        .login-cover input:focus {
-            background:
-                rgba(255,255,255,.085);
-        }
-
-
-        #loginButton {
-            width: 100%;
-            margin-top: 25px;
-        }
-
-
-        #loginMessage {
-            min-height: 25px;
-
-            margin-top: 16px;
-
-            color:
-                #d8b8a9;
-
-            text-align: center;
-            font-size: .9rem;
-        }
-
-
-        #appView {
-            display: none;
-        }
-
-
-        /* =====================================================
+        /* =========================================================
            FOOTER
-        ====================================================== */
+        ========================================================= */
 
         .footer {
-            margin-top: 58px;
+            margin-top: 56px;
 
             text-align: center;
 
-            color:
-                var(--ink-faint);
+            color: var(--ink-faint);
 
             font-family:
                 Arial,
@@ -2516,119 +2841,137 @@
 
         .footer button {
             border: none;
-            background: none;
+            background: transparent;
 
-            color:
-                var(--ink-faint);
+            color: var(--ink-faint);
 
             text-decoration: underline;
             text-underline-offset: 4px;
         }
 
 
-        /* =====================================================
-           MOBIL
-        ====================================================== */
+        /* =========================================================
+           MOBILE / TABLET
+        ========================================================= */
 
         @media (
-            max-width: 760px
+            max-width: 820px
         ) {
 
-            html {
-                font-size: 17px;
-            }
-
-
-            .shell {
+            .desk {
                 padding:
-                    12px
-                    8px
+                    10px
+                    6px
                     45px;
             }
 
 
-            .book {
+            .open-book {
                 padding:
-                    43px
-                    24px
+                    42px
+                    25px
                     40px;
 
-                box-shadow:
-                    0 18px 45px
-                    rgba(48,31,17,.21);
+                border-radius: 10px;
+
+                background:
+                    repeating-linear-gradient(
+                        0deg,
+                        rgba(112,76,40,.016) 0,
+                        rgba(112,76,40,.016) 1px,
+                        transparent 1px,
+                        transparent 4px
+                    ),
+                    var(--paper-2);
             }
 
 
-            .book::before {
-                inset: 8px;
+            .open-book::before {
+                display: none;
             }
 
 
-            .book::after {
-                inset: 13px;
+            .opening-spread {
+                grid-template-columns: 1fr;
+                gap: 10px;
             }
 
 
-            .main-title {
-                font-size:
-                    clamp(
-                        2.8rem,
-                        13vw,
-                        4.1rem
+            .opening-half {
+                min-height: auto;
+
+                padding:
+                    25px
+                    10px
+                    32px;
+            }
+
+
+            .opening-half:first-child::after {
+                top: auto;
+                left: 13%;
+                right: 13%;
+                bottom: 0;
+
+                width: auto;
+                height: 1px;
+
+                background:
+                    linear-gradient(
+                        90deg,
+                        transparent,
+                        rgba(129,91,45,.25),
+                        transparent
                     );
             }
 
 
+            .opening-half p {
+                min-height: auto;
+            }
+
+
             .chapter-nav {
-                gap: 0;
+                gap: 2px;
             }
 
 
             .chapter-nav button {
+                min-width: 0;
                 flex: 1;
 
                 padding:
                     11px
-                    7px;
+                    8px;
 
                 font-size: .76rem;
             }
 
 
-            .choice-grid {
-                grid-template-columns: 1fr;
-            }
-
-
-            .choice p {
-                min-height: auto;
-            }
-
-
-            .story-page {
+            .story-sheet {
                 padding:
-                    41px
+                    35px
                     2px
-                    18px;
+                    20px;
             }
 
 
             .record-stage {
-                width: 190px;
-                height: 190px;
+                width: 205px;
+                height: 205px;
             }
 
 
             #recordButton {
-                width: 145px;
-                height: 145px;
+                width: 148px;
+                height: 148px;
             }
 
 
             #transcript {
                 padding:
-                    22px
-                    5px;
+                    24px
+                    7px;
             }
 
 
@@ -2656,8 +2999,8 @@
 
             .timeline-item {
                 grid-template-columns:
-                    53px
-                    34px
+                    52px
+                    35px
                     minmax(0,1fr);
             }
 
@@ -2669,24 +3012,18 @@
 
             .dialog-page {
                 padding:
-                    48px
+                    49px
                     24px
-                    38px;
+                    40px;
             }
 
 
-            #loginView {
-                margin:
-                    18px
-                    auto;
-            }
-
-
-            .login-cover {
+            .book-cover {
                 padding:
-                    48px
-                    29px;
+                    52px
+                    31px;
             }
+
         }
 
 
@@ -2704,12 +3041,13 @@
                 animation-iteration-count:
                     1 !important;
 
-                scroll-behavior:
-                    auto !important;
-
                 transition-duration:
                     .01ms !important;
+
+                scroll-behavior:
+                    auto !important;
             }
+
         }
 
     </style>
@@ -2719,39 +3057,59 @@
 <body>
 
 
-<!-- =====================================================
+<!-- =========================================================
+     START / SESSION PRÜFEN
+========================================================= -->
+
+<div id="startupView">
+
+    <div class="startup-inner">
+
+        <div class="startup-mark">
+            ❦
+        </div>
+
+        <div class="startup-title">
+            Romans Erinnerungen
+        </div>
+
+        <div class="startup-line"></div>
+
+    </div>
+
+</div>
+
+
+<!-- =========================================================
      LOGIN
-===================================================== -->
+========================================================= -->
 
 <div id="loginView">
 
-    <section class="login-cover">
+    <section class="book-cover">
 
-        <div class="kicker">
+        <div class="cover-kicker">
             Familienchronik
         </div>
 
-        <h1 class="main-title">
+        <h1 class="cover-title">
             <span>Romans</span>
             <span>Erinnerungen</span>
         </h1>
 
-        <div class="title-subline">
+        <div class="cover-subtitle">
             Geschichten aus einem langen Leben
         </div>
 
-        <div class="ornament">
-            <span class="ornament-symbol">
-                ❦
-            </span>
+        <div class="cover-ornament">
+            <span>❦</span>
         </div>
 
         <div class="login-copy">
-            Ein persönliches Buch für Erinnerungen,
-            Geschichten und Augenblicke,
-            die bleiben sollen.
+            Ein persönliches Buch für Geschichten,
+            Begegnungen und Augenblicke,
+            die nicht verloren gehen sollen.
         </div>
-
 
         <label for="email">
             E-Mail
@@ -2763,7 +3121,6 @@
             autocomplete="email"
         >
 
-
         <label for="password">
             Passwort
         </label>
@@ -2774,14 +3131,12 @@
             autocomplete="current-password"
         >
 
-
         <button
             id="loginButton"
             class="primary"
         >
             Erinnerungsbuch öffnen
         </button>
-
 
         <div id="loginMessage"></div>
 
@@ -2790,533 +3145,582 @@
 </div>
 
 
-<!-- =====================================================
+<!-- =========================================================
      APP
-===================================================== -->
+========================================================= -->
 
 <div id="appView">
 
-    <div class="shell">
+    <div class="desk">
 
-        <main class="book">
+        <div class="book-shadow">
 
-            <div class="content">
+            <main class="open-book">
 
+                <div class="page-edge-left"></div>
+                <div class="page-edge-right"></div>
 
-                <!-- Kopf -->
-
-                <div class="kicker">
-                    Familienchronik
-                </div>
-
-                <h1 class="main-title">
-                    Romans Erinnerungen
-                </h1>
-
-                <div class="title-subline">
-                    Geschichten aus einem langen Leben
-                </div>
-
-                <div class="ornament">
-                    <span class="ornament-symbol">
-                        ❦
-                    </span>
-                </div>
+                <div class="book-content">
 
 
-                <!-- Navigation -->
+                    <!-- Kopf -->
 
-                <nav class="chapter-nav">
+                    <div class="book-kicker">
+                        Familienchronik
+                    </div>
 
-                    <button
-                        id="navTell"
-                        class="active"
-                    >
-                        Erzählen
-                    </button>
+                    <h1 class="book-title">
+                        Romans Erinnerungen
+                    </h1>
 
-                    <button id="navMemories">
-                        Erinnerungen
-                    </button>
+                    <div class="book-subtitle">
+                        Geschichten aus einem langen Leben
+                    </div>
 
-                    <button id="navTimeline">
-                        Zeitreise
-                    </button>
-
-                </nav>
-
-
-                <!-- =================================================
-                     ERZÄHLEN
-                ================================================== -->
-
-                <section
-                    id="tellView"
-                    class="view active"
-                >
-
-                    <div id="tellStart">
-
-                        <div class="chapter-label">
-                            Eine neue Seite
-                        </div>
-
-                        <h2 class="chapter-title">
-                            Was möchtest du heute erzählen?
-                        </h2>
-
-                        <div class="chapter-copy">
-                            Lass dich von einer Frage
-                            zu einer Erinnerung führen –
-                            oder erzähl einfach frei,
-                            was dir gerade in den Sinn kommt.
-                        </div>
-
-
-                        <div class="choice-grid">
-
-
-                            <article class="choice">
-
-                                <div class="choice-symbol">
-                                    ❧
-                                </div>
-
-                                <h3>
-                                    Lass dich fragen
-                                </h3>
-
-                                <p>
-                                    Eine Frage führt dich vielleicht
-                                    zurück zu einem Menschen,
-                                    einem Ort oder einer besonderen
-                                    Zeit deines Lebens.
-                                </p>
-
-                                <button
-                                    id="questionModeButton"
-                                    class="primary"
-                                >
-                                    Eine Frage bekommen
-                                </button>
-
-                            </article>
-
-
-                            <article class="choice">
-
-                                <div class="choice-symbol">
-                                    ✦
-                                </div>
-
-                                <h3>
-                                    Freie Erinnerung
-                                </h3>
-
-                                <p>
-                                    Du hast gerade etwas im Kopf?
-                                    Dann erzähl einfach drauflos.
-                                    Es muss zu keiner Frage passen.
-                                </p>
-
-                                <button
-                                    id="freeModeButton"
-                                    class="secondary"
-                                >
-                                    Frei erzählen
-                                </button>
-
-                            </article>
-
-
-                        </div>
-
+                    <div class="gold-ornament">
+                        <span>❦</span>
                     </div>
 
 
-                    <!-- Erzählseite -->
+                    <!-- Navigation -->
 
-                    <div id="storyView">
+                    <nav class="chapter-nav">
 
-                        <section class="story-page">
+                        <button
+                            id="navTell"
+                            class="active"
+                        >
+                            Erzählen
+                        </button>
+
+                        <button id="navMemories">
+                            Erinnerungen
+                        </button>
+
+                        <button id="navTimeline">
+                            Zeitreise
+                        </button>
+
+                    </nav>
 
 
-                            <div id="questionContent">
+                    <!-- =================================================
+                         ERZÄHLEN
+                    ================================================== -->
 
-                                <div class="question-intro">
-                                    Heute möchte ich dich fragen
+                    <section
+                        id="tellView"
+                        class="view active"
+                    >
+
+                        <div id="tellStart">
+
+                            <div class="chapter-label">
+                                Eine neue Seite
+                            </div>
+
+                            <h2 class="chapter-title">
+                                Was möchtest du heute erzählen?
+                            </h2>
+
+                            <div class="chapter-copy">
+                                Manchmal genügt eine Frage,
+                                um eine längst vergessene Tür
+                                zu öffnen. Und manchmal ist
+                                eine Erinnerung einfach plötzlich da.
+                            </div>
+
+
+                            <div class="opening-spread">
+
+
+                                <div class="opening-half">
+
+                                    <div class="large-initial">
+                                        ❧
+                                    </div>
+
+                                    <h3>
+                                        Lass dich fragen
+                                    </h3>
+
+                                    <p>
+                                        Eine Frage führt dich
+                                        vielleicht zurück zu einem
+                                        Menschen, einem Ort,
+                                        einem Erlebnis oder einer
+                                        besonderen Zeit deines Lebens.
+                                    </p>
+
+                                    <button
+                                        id="questionModeButton"
+                                        class="primary"
+                                    >
+                                        Eine Frage bekommen
+                                    </button>
+
                                 </div>
 
-                                <div id="question"></div>
+
+                                <div class="opening-half">
+
+                                    <div class="large-initial">
+                                        ✦
+                                    </div>
+
+                                    <h3>
+                                        Freie Erinnerung
+                                    </h3>
+
+                                    <p>
+                                        Dir ist gerade etwas
+                                        eingefallen? Dann erzähl
+                                        einfach drauflos.
+                                        Die Erinnerung bestimmt selbst,
+                                        wo sie beginnt.
+                                    </p>
+
+                                    <button
+                                        id="freeModeButton"
+                                        class="secondary"
+                                    >
+                                        Frei erzählen
+                                    </button>
+
+                                </div>
+
+
+                            </div>
+
+                        </div>
+
+
+                        <!-- Aufnahme -->
+
+                        <div id="storyView">
+
+                            <section class="story-sheet">
+
+                                <div id="questionContent">
+
+                                    <div class="question-intro">
+                                        Heute möchte ich dich fragen
+                                    </div>
+
+                                    <div id="question"></div>
+
+                                </div>
+
+
+                                <div
+                                    id="freeContent"
+                                    style="display:none;"
+                                >
+
+                                    <h2 class="free-title">
+                                        Was möchtest du
+                                        heute festhalten?
+                                    </h2>
+
+                                    <div class="free-copy">
+                                        Erzähl einfach in deinen
+                                        eigenen Worten.
+                                        Nimm dir Zeit.
+                                        Es muss zu keiner Frage passen.
+                                    </div>
+
+                                </div>
+
+
+                                <div class="record-zone">
+
+
+                                    <div class="record-stage">
+
+                                        <div class="brass-ring"></div>
+
+                                        <div
+                                            class="brass-ring two"
+                                        ></div>
+
+                                        <button
+                                            id="recordButton"
+                                            aria-label="Aufnahme starten oder beenden"
+                                        >
+
+                                            <svg
+                                                class="mic-svg"
+                                                viewBox="0 0 48 48"
+                                                aria-hidden="true"
+                                            >
+                                                <rect
+                                                    x="17"
+                                                    y="6"
+                                                    width="14"
+                                                    height="25"
+                                                    rx="7"
+                                                ></rect>
+
+                                                <path
+                                                    d="M12 23
+                                                       C12 31 17 36 24 36
+                                                       C31 36 36 31 36 23"
+                                                ></path>
+
+                                                <path
+                                                    d="M24 36 V43"
+                                                ></path>
+
+                                                <path
+                                                    d="M17 43 H31"
+                                                ></path>
+                                            </svg>
+
+                                            <span id="micText">
+                                                Erzählen
+                                            </span>
+
+                                        </button>
+
+                                    </div>
+
+
+                                    <div id="recordingFeedback">
+
+                                        <div class="listening">
+                                            Ich höre dir zu …
+                                        </div>
+
+                                        <div id="recordingTime">
+                                            00:00
+                                        </div>
+
+                                        <canvas
+                                            id="audioMeter"
+                                            width="570"
+                                            height="88"
+                                        ></canvas>
+
+                                    </div>
+
+
+                                    <div class="text-actions">
+
+                                        <button
+                                            id="newQuestionButton"
+                                            class="text-button"
+                                        >
+                                            Andere Frage
+                                        </button>
+
+                                        <button
+                                            id="backToStartButton"
+                                            class="text-button"
+                                        >
+                                            Zurück
+                                        </button>
+
+                                    </div>
+
+
+                                    <div id="status"></div>
+
+                                </div>
+
+                            </section>
+
+                        </div>
+
+
+                        <!-- Verarbeitung -->
+
+                        <section id="processingBox">
+
+                            <div class="chapter-label">
+                                Einen Augenblick
+                            </div>
+
+                            <svg
+                                class="quill"
+                                viewBox="0 0 64 64"
+                                aria-hidden="true"
+                            >
+                                <path
+                                    d="M51 6
+                                       C37 8 24 19 17 35
+                                       L12 50
+                                       L27 43
+                                       C43 35 52 20 54 8
+                                       Z"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    stroke-width="2"
+                                ></path>
+
+                                <path
+                                    d="M15 48
+                                       C24 36 34 26 48 13"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    stroke-width="2"
+                                ></path>
+                            </svg>
+
+                            <h2>
+                                Deine Worte werden bewahrt
+                            </h2>
+
+                            <div class="processing-line"></div>
+
+                            <div
+                                id="processingText"
+                                style="color:var(--ink-soft);"
+                            >
+                                Ich schreibe deine Erzählung auf …
+                            </div>
+
+                        </section>
+
+
+                        <!-- Review -->
+
+                        <section id="reviewArea">
+
+                            <div class="section-heading">
+
+                                <small>
+                                    Deine Worte
+                                </small>
+
+                                <h2>
+                                    Deine Erzählung
+                                </h2>
+
+                            </div>
+
+                            <div id="transcript"></div>
+
+
+                            <div class="section-heading">
+
+                                <small>
+                                    Eine Notiz am Rand
+                                </small>
+
+                                <h2>
+                                    Kurz festgehalten
+                                </h2>
+
+                            </div>
+
+                            <div id="summary"></div>
+
+
+                            <div class="decision">
+
+                                <h3>
+                                    Soll diese Erinnerung
+                                    so bewahrt werden?
+                                </h3>
+
+                                <div class="button-row">
+
+                                    <button
+                                        id="confirmButton"
+                                        class="primary"
+                                    >
+                                        So speichern
+                                    </button>
+
+                                    <button
+                                        id="retryButton"
+                                        class="secondary"
+                                    >
+                                        Noch einmal erzählen
+                                    </button>
+
+                                    <button
+                                        id="discardButton"
+                                        class="danger"
+                                    >
+                                        Verwerfen
+                                    </button>
+
+                                </div>
+
+                            </div>
+
+                        </section>
+
+
+                        <!-- Nach Speicherung -->
+
+                        <section id="afterSaveArea">
+
+                            <div id="savedMessage">
+                                Diese Erinnerung ist gespeichert.
+                            </div>
+
+                            <div id="privacyContainer"></div>
+
+
+                            <div
+                                id="followUpBox"
+                                class="special-box"
+                            >
+
+                                <div class="chapter-label">
+                                    Noch ein Gedanke
+                                </div>
+
+                                <h3>
+                                    Darf ich noch etwas fragen?
+                                </h3>
+
+                                <div id="followUpQuestion"></div>
+
+                                <div class="button-row">
+
+                                    <button
+                                        id="followUpButton"
+                                        class="primary"
+                                    >
+                                        Ja, erzähl weiter
+                                    </button>
+
+                                    <button
+                                        id="skipFollowUpButton"
+                                        class="secondary"
+                                    >
+                                        Lieber etwas Neues
+                                    </button>
+
+                                </div>
 
                             </div>
 
 
                             <div
-                                id="freeContent"
-                                style="display:none;"
+                                style="
+                                    text-align:center;
+                                    margin-top:34px;
+                                "
                             >
 
-                                <h2 class="free-title">
-                                    Was möchtest du
-                                    heute festhalten?
-                                </h2>
-
-                                <div class="free-copy">
-                                    Vielleicht ist dir gerade
-                                    eine Begebenheit, ein Mensch,
-                                    ein Ort oder ein besonderer
-                                    Augenblick eingefallen.
-                                    Erzähl einfach in deinen
-                                    eigenen Worten.
-                                </div>
+                                <button
+                                    id="newMemoryButton"
+                                    class="text-button"
+                                >
+                                    Eine neue Erinnerung beginnen
+                                </button>
 
                             </div>
-
-
-                            <div class="record-zone">
-
-                                <div class="record-stage">
-
-                                    <div
-                                        class="record-halo"
-                                    ></div>
-
-                                    <button id="recordButton">
-
-                                        <span class="mic-icon">
-                                            🎙
-                                        </span>
-
-                                        <span id="micText">
-                                            Erzählen
-                                        </span>
-
-                                    </button>
-
-                                </div>
-
-
-                                <div id="recordingFeedback">
-
-                                    <div class="listening">
-                                        Ich höre dir zu …
-                                    </div>
-
-                                    <div id="recordingTime">
-                                        00:00
-                                    </div>
-
-                                    <canvas
-                                        id="audioMeter"
-                                        width="560"
-                                        height="88"
-                                    ></canvas>
-
-                                </div>
-
-
-                                <div class="text-actions">
-
-                                    <button
-                                        id="newQuestionButton"
-                                        class="text-button"
-                                    >
-                                        Andere Frage
-                                    </button>
-
-                                    <button
-                                        id="backToStartButton"
-                                        class="text-button"
-                                    >
-                                        Zurück
-                                    </button>
-
-                                </div>
-
-
-                                <div id="status"></div>
-
-                            </div>
-
 
                         </section>
 
-                    </div>
+                    </section>
 
 
-                    <!-- Verarbeitung -->
+                    <!-- =================================================
+                         ERINNERUNGEN
+                    ================================================== -->
 
-                    <section id="processingBox">
+                    <section
+                        id="memoriesView"
+                        class="view"
+                    >
 
                         <div class="chapter-label">
-                            Einen Augenblick
+                            Das Erinnerungsbuch
                         </div>
 
-                        <h2>
-                            Deine Erinnerung wird festgehalten
+                        <h2 class="chapter-title">
+                            Festgehaltene Geschichten
                         </h2>
 
-                        <div class="writing-line"></div>
-
-                        <div class="dots">
-                            <span></span>
-                            <span></span>
-                            <span></span>
-                        </div>
-
-                        <div
-                            id="processingText"
-                            style="color:var(--ink-soft);"
-                        >
-                            Ich schreibe deine Worte auf …
-                        </div>
-
-                    </section>
-
-
-                    <!-- Prüfen -->
-
-                    <section id="reviewArea">
-
-                        <div class="section-heading">
-
-                            <small>
-                                Deine Worte
-                            </small>
-
-                            <h2>
-                                Deine Erzählung
-                            </h2>
-
+                        <div class="chapter-copy">
+                            Menschen, Orte, Begegnungen,
+                            Entscheidungen und Augenblicke
+                            aus Romans Leben.
                         </div>
 
 
-                        <div id="transcript"></div>
+                        <div class="archive-toolbar">
 
-
-                        <div class="section-heading">
-
-                            <small>
-                                Eine kleine Notiz am Rand
-                            </small>
-
-                            <h2>
-                                Kurz festgehalten
-                            </h2>
-
-                        </div>
-
-
-                        <div id="summary"></div>
-
-
-                        <div class="decision">
-
-                            <h3>
-                                Soll diese Erinnerung
-                                so in Romans Buch bleiben?
-                            </h3>
-
-                            <div class="button-row">
-
-                                <button
-                                    id="confirmButton"
-                                    class="primary"
-                                >
-                                    ✓ So speichern
-                                </button>
-
-                                <button
-                                    id="retryButton"
-                                    class="secondary"
-                                >
-                                    🎙 Noch einmal erzählen
-                                </button>
-
-                                <button
-                                    id="discardButton"
-                                    class="danger"
-                                >
-                                    Verwerfen
-                                </button>
-
-                            </div>
-
-                        </div>
-
-                    </section>
-
-
-                    <!-- Nach Speicherung -->
-
-                    <section id="afterSaveArea">
-
-                        <div id="savedMessage">
-                            Diese Erinnerung ist gespeichert.
-                        </div>
-
-
-                        <div id="privacyContainer"></div>
-
-
-                        <div
-                            id="followUpBox"
-                            class="special-box"
-                        >
-
-                            <div class="chapter-label">
-                                Noch ein Gedanke
-                            </div>
-
-                            <h3>
-                                Darf ich noch etwas fragen?
-                            </h3>
-
-                            <div id="followUpQuestion"></div>
-
-                            <div class="button-row">
-
-                                <button
-                                    id="followUpButton"
-                                    class="primary"
-                                >
-                                    Ja, erzähl weiter
-                                </button>
-
-                                <button
-                                    id="skipFollowUpButton"
-                                    class="secondary"
-                                >
-                                    Lieber etwas Neues
-                                </button>
-
-                            </div>
-
-                        </div>
-
-
-                        <div
-                            style="
-                                text-align:center;
-                                margin-top:34px;
-                            "
-                        >
-
-                            <button
-                                id="newMemoryButton"
-                                class="text-button"
+                            <input
+                                id="archiveSearch"
+                                type="search"
+                                placeholder=
+                                "In den Erinnerungen suchen …"
                             >
-                                Eine neue Erinnerung beginnen
-                            </button>
 
                         </div>
+
+
+                        <div id="archiveList"></div>
 
                     </section>
 
 
-                </section>
+                    <!-- =================================================
+                         ZEITREISE
+                    ================================================== -->
+
+                    <section
+                        id="timelineView"
+                        class="view"
+                    >
+
+                        <div class="chapter-label">
+                            Durch ein langes Leben
+                        </div>
+
+                        <h2 class="chapter-title">
+                            Zeitreise
+                        </h2>
+
+                        <div class="chapter-copy">
+                            Mit jeder Geschichte entsteht
+                            nach und nach eine Chronik.
+                            Auch ungefähre Jahreszahlen
+                            können später ergänzt werden.
+                        </div>
 
 
-                <!-- =================================================
-                     ERINNERUNGEN
-                ================================================== -->
-
-                <section
-                    id="memoriesView"
-                    class="view"
-                >
-
-                    <div class="chapter-label">
-                        Das Erinnerungsbuch
-                    </div>
-
-                    <h2 class="chapter-title">
-                        Festgehaltene Geschichten
-                    </h2>
-
-                    <div class="chapter-copy">
-                        Menschen, Orte, Begegnungen
-                        und Augenblicke aus Romans Leben.
-                    </div>
+                        <div id="timelineList"></div>
 
 
-                    <div class="archive-toolbar">
+                        <div
+                            id="unknownTimeline"
+                            class="unknown-section"
+                        ></div>
 
-                        <input
-                            id="archiveSearch"
-                            type="search"
-                            placeholder=
-                            "In den Erinnerungen suchen …"
-                        >
-
-                    </div>
+                    </section>
 
 
-                    <div id="archiveList"></div>
+                    <footer class="footer">
 
-                </section>
+                        <button id="logoutButton">
+                            Abmelden
+                        </button>
 
-
-                <!-- =================================================
-                     ZEITREISE
-                ================================================== -->
-
-                <section
-                    id="timelineView"
-                    class="view"
-                >
-
-                    <div class="chapter-label">
-                        Durch ein langes Leben
-                    </div>
-
-                    <h2 class="chapter-title">
-                        Zeitreise
-                    </h2>
-
-                    <div class="chapter-copy">
-                        Die Erinnerungen ordnen sich
-                        nach und nach zu einer Chronik.
-                        Fehlende Jahreszahlen können
-                        jederzeit ergänzt werden.
-                    </div>
+                    </footer>
 
 
-                    <div id="timelineList"></div>
+                </div>
 
+            </main>
 
-                    <div
-                        id="unknownTimeline"
-                        class="unknown-section"
-                    ></div>
-
-                </section>
-
-
-                <!-- Footer -->
-
-                <footer class="footer">
-
-                    <button id="logoutButton">
-                        Abmelden
-                    </button>
-
-                </footer>
-
-
-            </div>
-
-        </main>
+        </div>
 
     </div>
 
 </div>
 
 
-<!-- =====================================================
+<!-- =========================================================
      ERINNERUNG ÖFFNEN
-===================================================== -->
+========================================================= -->
 
 <div id="memoryDialog">
 
@@ -3330,20 +3734,15 @@
             ×
         </button>
 
-
         <div class="chapter-label">
             Eine Seite aus Romans Leben
         </div>
 
-
         <h2 id="dialogTitle"></h2>
-
 
         <div id="dialogTime"></div>
 
-
         <div id="dialogSummary"></div>
-
 
         <div id="dialogTranscript"></div>
 
@@ -3361,7 +3760,6 @@
                 Wann war das ungefähr?
             </h3>
 
-
             <label for="timelineYearInput">
                 Jahr
             </label>
@@ -3374,9 +3772,8 @@
                 placeholder="z. B. 1954"
             >
 
-
             <label for="timelineLabelInput">
-                Wie möchtest du die Zeit bezeichnen?
+                Bezeichnung
             </label>
 
             <input
@@ -3385,7 +3782,6 @@
                 placeholder=
                 "z. B. Sommer 1954 oder etwa 1960"
             >
-
 
             <label for="timelineConfidenceInput">
                 Wie sicher ist die Angabe?
@@ -3406,7 +3802,6 @@
                 </option>
 
             </select>
-
 
             <button
                 id="saveTimelineButton"
@@ -3431,14 +3826,11 @@
 const API =
     "https://papa-erzaehlt-api.onrender.com";
 
-
 const ROMAN_PROFILE_ID =
     "4f310747-c3ed-4cc0-9b6f-5896433c7217";
 
-
 const SUPABASE_URL =
     "https://jmzauodqntkdpkftbxrd.supabase.co";
-
 
 const SUPABASE_KEY =
     "sb_publishable_CTIY88H3V1d6toZy4_ARWQ_08D3UTZO";
@@ -3502,6 +3894,11 @@ let recordingStartedAt = null;
    ELEMENTE
 ========================================================= */
 
+const startupView =
+    document.getElementById(
+        "startupView"
+    );
+
 const loginView =
     document.getElementById(
         "loginView"
@@ -3537,7 +3934,6 @@ const logoutButton =
         "logoutButton"
     );
 
-
 const navTell =
     document.getElementById(
         "navTell"
@@ -3553,7 +3949,6 @@ const navTimeline =
         "navTimeline"
     );
 
-
 const tellView =
     document.getElementById(
         "tellView"
@@ -3568,7 +3963,6 @@ const timelineView =
     document.getElementById(
         "timelineView"
     );
-
 
 const tellStart =
     document.getElementById(
@@ -3604,7 +3998,6 @@ const freeModeButton =
     document.getElementById(
         "freeModeButton"
     );
-
 
 const recordButton =
     document.getElementById(
@@ -3646,7 +4039,6 @@ const backToStartButton =
         "backToStartButton"
     );
 
-
 const processingBox =
     document.getElementById(
         "processingBox"
@@ -3656,7 +4048,6 @@ const processingText =
     document.getElementById(
         "processingText"
     );
-
 
 const reviewArea =
     document.getElementById(
@@ -3687,7 +4078,6 @@ const discardButton =
     document.getElementById(
         "discardButton"
     );
-
 
 const afterSaveArea =
     document.getElementById(
@@ -3729,7 +4119,6 @@ const newMemoryButton =
         "newMemoryButton"
     );
 
-
 const archiveSearch =
     document.getElementById(
         "archiveSearch"
@@ -3749,7 +4138,6 @@ const unknownTimeline =
     document.getElementById(
         "unknownTimeline"
     );
-
 
 const memoryDialog =
     document.getElementById(
@@ -3883,8 +4271,14 @@ async function apiFetch(
 
 async function initializeAuth() {
 
-    loginMessage.textContent =
-        "Anmeldung wird geprüft …";
+    startupView.style.display =
+        "flex";
+
+    loginView.style.display =
+        "none";
+
+    appView.style.display =
+        "none";
 
 
     const {
@@ -3902,10 +4296,10 @@ async function initializeAuth() {
         !data.session
     ) {
 
-        showLogin();
+        startupView.style.display =
+            "none";
 
-        loginMessage.textContent =
-            "";
+        showLogin();
 
         return;
     }
@@ -3915,11 +4309,17 @@ async function initializeAuth() {
 
         await openApp();
 
+        startupView.style.display =
+            "none";
+
     }
 
     catch (error) {
 
         console.error(error);
+
+        startupView.style.display =
+            "none";
 
         showLogin();
 
@@ -3931,8 +4331,11 @@ async function initializeAuth() {
 
 function showLogin() {
 
+    startupView.style.display =
+        "none";
+
     loginView.style.display =
-        "block";
+        "flex";
 
     appView.style.display =
         "none";
@@ -4206,7 +4609,7 @@ function switchView(name) {
 
 
 /* =========================================================
-   ERZÄHL-MODUS
+   STORY STATE
 ========================================================= */
 
 function resetStoryState() {
@@ -4451,9 +4854,7 @@ function selectRecordingFormat() {
    AUDIOANZEIGE
 ========================================================= */
 
-function startAudioMeter(
-    stream
-) {
+function startAudioMeter(stream) {
 
     audioContext =
         new (
@@ -4478,9 +4879,8 @@ function startAudioMeter(
     analyser.fftSize =
         256;
 
-
     analyser.smoothingTimeConstant =
-        .78;
+        .8;
 
 
     source.connect(
@@ -4532,7 +4932,7 @@ function drawAudioMeter() {
 
 
     const bars =
-        34;
+        36;
 
     const step =
         Math.max(
@@ -4546,6 +4946,7 @@ function drawAudioMeter() {
 
     const gap =
         7;
+
 
     const barWidth =
         (
@@ -4570,19 +4971,19 @@ function drawAudioMeter() {
             / 255;
 
 
-        const shapedValue =
+        const shaped =
             Math.pow(
                 value,
-                .85
+                .78
             );
 
 
         const barHeight =
             Math.max(
                 4,
-                shapedValue
+                shaped
                 * height
-                * .78
+                * .82
             );
 
 
@@ -4604,14 +5005,33 @@ function drawAudioMeter() {
 
         const alpha =
             .28
-            + shapedValue
+            + shaped
             * .72;
 
 
+        const gradient =
+            ctx.createLinearGradient(
+                0,
+                y,
+                0,
+                y + barHeight
+            );
+
+
+        gradient.addColorStop(
+            0,
+            `rgba(213,181,110,${alpha})`
+        );
+
+
+        gradient.addColorStop(
+            1,
+            `rgba(109,53,52,${alpha})`
+        );
+
+
         ctx.fillStyle =
-            value > .42
-            ? `rgba(101,56,53,${alpha})`
-            : `rgba(157,116,53,${alpha})`;
+            gradient;
 
 
         ctx.beginPath();
@@ -4722,14 +5142,12 @@ function startTimer() {
 
                 const minutes =
                     Math.floor(
-                        seconds
-                        / 60
+                        seconds / 60
                     );
 
 
                 const rest =
-                    seconds
-                    % 60;
+                    seconds % 60;
 
 
                 recordingTime.textContent =
@@ -5023,7 +5441,7 @@ async function createEmptyAnswer() {
 
 
 /* =========================================================
-   NACH AUFNAHME
+   NACH DER AUFNAHME
 ========================================================= */
 
 async function handleFinishedRecording() {
@@ -5508,18 +5926,21 @@ function showPrivacy(reason) {
         </div>
 
         <h3>
-            🔒 Diese Erinnerung klingt vertraulich
+            Diese Erinnerung klingt vertraulich
         </h3>
 
         <p
             style="
+                position:relative;
+                z-index:2;
                 text-align:center;
                 color:var(--ink-soft);
                 line-height:1.65;
             "
         >
             Soll diese Erinnerung
-            nur innerhalb der Familie bleiben?
+            ausschließlich innerhalb
+            der Familie bleiben?
         </p>
 
         ${
@@ -5527,6 +5948,8 @@ function showPrivacy(reason) {
             ? `
             <p
                 style="
+                    position:relative;
+                    z-index:2;
                     text-align:center;
                     color:var(--ink-soft);
                     font-size:.88rem;
@@ -5545,7 +5968,7 @@ function showPrivacy(reason) {
                 id="privacyFamily"
                 class="primary"
             >
-                🔒 Nur für die Familie
+                Nur für die Familie
             </button>
 
             <button
@@ -6113,8 +6536,8 @@ function renderTimeline() {
 
             row.style.animationDelay =
                 `${Math.min(
-                    index * 55,
-                    500
+                    index * 70,
+                    650
                 )}ms`;
 
 
@@ -6157,7 +6580,7 @@ function renderTimeline() {
                         <div
                             style="
                                 margin-top:9px;
-                                color:var(--gold);
+                                color:var(--brass);
                                 font-style:italic;
                                 font-size:.9rem;
                             "
@@ -6553,7 +6976,7 @@ async function saveTimeline() {
 
 
 /* =========================================================
-   HTML ESCAPING
+   HTML ESCAPE
 ========================================================= */
 
 function escapeHtml(
@@ -6693,10 +7116,7 @@ followUpButton.onclick =
 
 
 skipFollowUpButton.onclick =
-    () => {
-
-        showTellStart();
-    };
+    showTellStart;
 
 
 newMemoryButton.onclick =
