@@ -1,0 +1,1787 @@
+<!DOCTYPE html>
+<html lang="de">
+
+<head>
+    <meta charset="UTF-8">
+
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1.0">
+
+    <title>Papa erzählt</title>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 40px auto;
+            padding: 20px;
+            line-height: 1.5;
+        }
+
+        h1 {
+            font-size: 36px;
+        }
+
+        button {
+            font-size: 20px;
+            padding: 15px 24px;
+            margin: 8px 8px 8px 0;
+            cursor: pointer;
+        }
+
+        input {
+            width: 100%;
+            font-size: 20px;
+            padding: 14px;
+            margin: 8px 0 18px;
+        }
+
+        label {
+            font-size: 18px;
+            font-weight: bold;
+        }
+
+        #loginView {
+            max-width: 500px;
+            margin: 80px auto;
+        }
+
+        #loginBox {
+            border: 1px solid #ccc;
+            border-radius: 14px;
+            padding: 28px;
+        }
+
+        #loginMessage {
+            margin-top: 15px;
+            font-size: 17px;
+        }
+
+        #appView {
+            display: none;
+        }
+
+        #question {
+            font-size: 28px;
+            margin: 30px 0;
+        }
+
+        #status {
+            margin: 25px 0;
+            font-size: 18px;
+            min-height: 30px;
+        }
+
+        .box {
+            padding: 18px;
+            border: 1px solid #ccc;
+            margin-top: 12px;
+            font-size: 18px;
+            min-height: 60px;
+        }
+
+        .privacy-box {
+            margin-top: 25px;
+            padding: 22px;
+            border: 3px solid #444;
+            border-radius: 12px;
+            background: #f3f3f3;
+        }
+
+        .privacy-title {
+            font-size: 22px;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+
+        .privacy-question {
+            font-size: 23px;
+            margin: 12px 0;
+        }
+
+        .privacy-reason {
+            font-size: 16px;
+            color: #555;
+            margin-bottom: 15px;
+        }
+
+        #followUpBox {
+            display: none;
+            margin-top: 25px;
+            padding: 20px;
+            border: 2px solid #999;
+            border-radius: 12px;
+        }
+
+        #followUpQuestion {
+            font-size: 24px;
+            margin: 10px 0 15px;
+        }
+
+        #userInfo {
+            font-size: 14px;
+            color: #777;
+            margin-bottom: 20px;
+        }
+
+        #debug {
+            margin-top: 25px;
+            color: #777;
+            font-size: 13px;
+        }
+
+        .small-button {
+            font-size: 14px;
+            padding: 8px 12px;
+        }
+
+        #readerMessage {
+            display: none;
+            padding: 25px;
+            border: 1px solid #ccc;
+            border-radius: 12px;
+            margin-top: 30px;
+        }
+    </style>
+</head>
+
+<body>
+
+
+<!-- =====================================================
+     LOGIN
+===================================================== -->
+
+<div id="loginView">
+
+    <h1>Papa erzählt</h1>
+
+    <div id="loginBox">
+
+        <h2>Willkommen</h2>
+
+        <p>
+            Bitte einmal anmelden.
+            Danach merkt sich dieses Gerät die Anmeldung.
+        </p>
+
+        <label for="email">
+            E-Mail
+        </label>
+
+        <input
+            id="email"
+            type="email"
+            autocomplete="email"
+        >
+
+        <label for="password">
+            Passwort
+        </label>
+
+        <input
+            id="password"
+            type="password"
+            autocomplete="current-password"
+        >
+
+        <button id="loginButton">
+            Anmelden
+        </button>
+
+        <div id="loginMessage"></div>
+
+    </div>
+
+</div>
+
+
+<!-- =====================================================
+     APP
+===================================================== -->
+
+<div id="appView">
+
+    <h1>Papa erzählt</h1>
+
+    <div id="userInfo">
+        Angemeldet
+    </div>
+
+
+    <div id="narratorView">
+
+        <div id="question">
+            Frage wird geladen ...
+        </div>
+
+        <button id="recordButton">
+            🎙 Aufnahme starten
+        </button>
+
+        <button id="nextButton">
+            Andere Frage
+        </button>
+
+        <div id="status"></div>
+
+
+        <h3>Transkript</h3>
+
+        <div id="transcript" class="box">
+            Noch keine Aufnahme.
+        </div>
+
+
+        <h3>Zusammenfassung</h3>
+
+        <div id="summary" class="box">
+            Noch keine Auswertung.
+        </div>
+
+
+        <div id="privacyContainer"></div>
+
+
+        <div id="followUpBox">
+
+            <strong>Eine Nachfrage:</strong>
+
+            <div id="followUpQuestion"></div>
+
+            <button id="followUpButton">
+                Darauf antworten
+            </button>
+
+            <button id="skipFollowUpButton">
+                Lieber neue Frage
+            </button>
+
+        </div>
+
+    </div>
+
+
+    <div id="readerMessage">
+
+        <h2>Familienarchiv</h2>
+
+        <p>
+            Die Leseansicht für Familienmitglieder
+            bauen wir im nächsten Schritt.
+        </p>
+
+    </div>
+
+
+    <div id="debug">
+        Version: auth-v2
+    </div>
+
+
+    <div style="margin-top:40px;">
+
+        <button
+            id="logoutButton"
+            class="small-button"
+        >
+            Abmelden
+        </button>
+
+    </div>
+
+</div>
+
+
+<script>
+
+/* =========================================================
+   KONFIGURATION
+========================================================= */
+
+const API =
+    "http://127.0.0.1:8000";
+
+const ROMAN_PROFILE_ID =
+    "4f310747-c3ed-4cc0-9b6f-5896433c7217";
+
+const SUPABASE_URL =
+    "https://jmzauodqntkdpkftbxrd.supabase.co";
+
+const SUPABASE_KEY =
+    "HIER_DEINEN_PUBLISHABLE_KEY_EINSETZEN";
+
+
+const supabaseClient =
+    window.supabase.createClient(
+        SUPABASE_URL,
+        SUPABASE_KEY,
+        {
+            auth: {
+                persistSession: true,
+                autoRefreshToken: true,
+                detectSessionInUrl: true
+            }
+        }
+    );
+
+
+/* =========================================================
+   ZUSTAND
+========================================================= */
+
+let currentHistoryId = null;
+let currentAnswerId = null;
+
+let currentProfileId = null;
+let currentRole = null;
+
+let mediaRecorder = null;
+let audioChunks = [];
+
+let recordingMimeType = "";
+let recordingExtension = "webm";
+
+let currentFollowUpQuestion = "";
+
+
+/* =========================================================
+   ELEMENTE
+========================================================= */
+
+const loginView =
+    document.getElementById("loginView");
+
+const appView =
+    document.getElementById("appView");
+
+const narratorView =
+    document.getElementById("narratorView");
+
+const readerMessage =
+    document.getElementById("readerMessage");
+
+const emailInput =
+    document.getElementById("email");
+
+const passwordInput =
+    document.getElementById("password");
+
+const loginButton =
+    document.getElementById("loginButton");
+
+const loginMessage =
+    document.getElementById("loginMessage");
+
+const logoutButton =
+    document.getElementById("logoutButton");
+
+const userInfo =
+    document.getElementById("userInfo");
+
+const questionElement =
+    document.getElementById("question");
+
+const recordButton =
+    document.getElementById("recordButton");
+
+const nextButton =
+    document.getElementById("nextButton");
+
+const statusElement =
+    document.getElementById("status");
+
+const transcriptElement =
+    document.getElementById("transcript");
+
+const summaryElement =
+    document.getElementById("summary");
+
+const privacyContainer =
+    document.getElementById("privacyContainer");
+
+const followUpBox =
+    document.getElementById("followUpBox");
+
+const followUpQuestionElement =
+    document.getElementById("followUpQuestion");
+
+const followUpButton =
+    document.getElementById("followUpButton");
+
+const skipFollowUpButton =
+    document.getElementById("skipFollowUpButton");
+
+const debugElement =
+    document.getElementById("debug");
+
+
+/* =========================================================
+   BACKEND FETCH MIT LOGIN-TOKEN
+========================================================= */
+
+async function apiFetch(
+    path,
+    options = {}
+) {
+
+    const {
+        data,
+        error
+    } =
+        await supabaseClient.auth
+            .getSession();
+
+
+    if (
+        error ||
+        !data.session
+    ) {
+
+        await forceLogin();
+
+        throw new Error(
+            "Deine Anmeldung ist abgelaufen."
+        );
+    }
+
+
+    const token =
+        data.session.access_token;
+
+
+    const headers =
+        new Headers(
+            options.headers || {}
+        );
+
+
+    headers.set(
+        "Authorization",
+        `Bearer ${token}`
+    );
+
+
+    const response =
+        await fetch(
+            `${API}${path}`,
+            {
+                ...options,
+                headers
+            }
+        );
+
+
+    if (
+        response.status === 401
+    ) {
+
+        await forceLogin();
+
+        throw new Error(
+            "Die Anmeldung ist abgelaufen. Bitte erneut anmelden."
+        );
+    }
+
+
+    return response;
+}
+
+
+/* =========================================================
+   LOGIN
+========================================================= */
+
+async function initializeAuth() {
+
+    loginMessage.textContent =
+        "Anmeldung wird geprüft ...";
+
+
+    const {
+        data,
+        error
+    } =
+        await supabaseClient.auth
+            .getSession();
+
+
+    if (
+        error ||
+        !data.session
+    ) {
+
+        showLogin();
+
+        loginMessage.textContent =
+            "";
+
+        return;
+    }
+
+
+    try {
+
+        await openApp();
+
+    }
+
+    catch (error) {
+
+        console.error(error);
+
+        showLogin();
+
+        loginMessage.textContent =
+            error.message;
+    }
+}
+
+
+function showLogin() {
+
+    loginView.style.display =
+        "block";
+
+    appView.style.display =
+        "none";
+}
+
+
+async function forceLogin() {
+
+    await supabaseClient.auth
+        .signOut();
+
+    currentProfileId =
+        null;
+
+    currentRole =
+        null;
+
+    showLogin();
+}
+
+
+async function login() {
+
+    const email =
+        emailInput.value.trim();
+
+    const password =
+        passwordInput.value;
+
+
+    if (
+        !email ||
+        !password
+    ) {
+
+        loginMessage.textContent =
+            "Bitte E-Mail und Passwort eingeben.";
+
+        return;
+    }
+
+
+    loginButton.disabled =
+        true;
+
+    loginMessage.textContent =
+        "Anmeldung läuft ...";
+
+
+    try {
+
+        const {
+            error
+        } =
+            await supabaseClient.auth
+                .signInWithPassword({
+                    email,
+                    password
+                });
+
+
+        if (error) {
+            throw error;
+        }
+
+
+        passwordInput.value =
+            "";
+
+        loginMessage.textContent =
+            "";
+
+
+        await openApp();
+
+    }
+
+    catch (error) {
+
+        console.error(error);
+
+        loginMessage.textContent =
+            "Anmeldung fehlgeschlagen: " +
+            error.message;
+    }
+
+    finally {
+
+        loginButton.disabled =
+            false;
+    }
+}
+
+
+async function openApp() {
+
+    const response =
+        await apiFetch(
+            "/me"
+        );
+
+
+    const me =
+        await response.json();
+
+
+    if (!response.ok) {
+
+        throw new Error(
+            me.detail ||
+            "Benutzer konnte nicht geladen werden."
+        );
+    }
+
+
+    currentRole =
+        me.role;
+
+
+    if (
+        me.role === "narrator"
+    ) {
+
+        currentProfileId =
+            me.profile_id;
+
+    }
+
+    else if (
+        me.role === "admin"
+    ) {
+
+        /*
+        Für den Moment arbeitet der Admin
+        mit Romans Profil.
+        Später bekommt der Admin eine
+        richtige Profilauswahl.
+        */
+
+        currentProfileId =
+            ROMAN_PROFILE_ID;
+
+    }
+
+    else {
+
+        currentProfileId =
+            null;
+    }
+
+
+    loginView.style.display =
+        "none";
+
+    appView.style.display =
+        "block";
+
+
+    userInfo.textContent =
+        `${me.display_name} · ${me.role}`;
+
+
+    if (
+        me.role === "reader"
+    ) {
+
+        narratorView.style.display =
+            "none";
+
+        readerMessage.style.display =
+            "block";
+
+        return;
+    }
+
+
+    if (
+        me.role !== "admin"
+        &&
+        me.role !== "narrator"
+    ) {
+
+        narratorView.style.display =
+            "none";
+
+        readerMessage.style.display =
+            "block";
+
+        return;
+    }
+
+
+    narratorView.style.display =
+        "block";
+
+    readerMessage.style.display =
+        "none";
+
+
+    if (!currentProfileId) {
+
+        statusElement.textContent =
+            "Für diesen Benutzer ist noch kein Erzählerprofil eingerichtet.";
+
+        return;
+    }
+
+
+    await loadQuestion();
+}
+
+
+async function logout() {
+
+    await supabaseClient.auth
+        .signOut();
+
+
+    currentProfileId =
+        null;
+
+    currentRole =
+        null;
+
+
+    resetView();
+
+
+    emailInput.value =
+        "";
+
+    passwordInput.value =
+        "";
+
+    loginMessage.textContent =
+        "";
+
+
+    showLogin();
+}
+
+
+/* =========================================================
+   AUDIOFORMAT
+========================================================= */
+
+function selectRecordingFormat() {
+
+    const formats = [
+        {
+            mime:
+                "audio/webm;codecs=opus",
+
+            extension:
+                "webm"
+        },
+        {
+            mime:
+                "audio/webm",
+
+            extension:
+                "webm"
+        },
+        {
+            mime:
+                "audio/ogg;codecs=opus",
+
+            extension:
+                "ogg"
+        },
+        {
+            mime:
+                "audio/ogg",
+
+            extension:
+                "ogg"
+        }
+    ];
+
+
+    for (
+        const format
+        of formats
+    ) {
+
+        if (
+            MediaRecorder
+                .isTypeSupported(
+                    format.mime
+                )
+        ) {
+
+            return format;
+        }
+    }
+
+
+    return null;
+}
+
+
+/* =========================================================
+   PRIVACY
+========================================================= */
+
+function clearPrivacy() {
+
+    privacyContainer.innerHTML =
+        "";
+}
+
+
+function showPrivacy(
+    reason
+) {
+
+    clearPrivacy();
+
+
+    const box =
+        document.createElement(
+            "div"
+        );
+
+    box.className =
+        "privacy-box";
+
+
+    const title =
+        document.createElement(
+            "div"
+        );
+
+    title.className =
+        "privacy-title";
+
+    title.textContent =
+        "🔒 Vertraulichkeit erkannt";
+
+
+    const question =
+        document.createElement(
+            "div"
+        );
+
+    question.className =
+        "privacy-question";
+
+    question.textContent =
+        "Du hast angedeutet, dass diese Erinnerung vertraulich ist. Soll sie nur für die Familie sichtbar sein?";
+
+
+    const reasonElement =
+        document.createElement(
+            "div"
+        );
+
+    reasonElement.className =
+        "privacy-reason";
+
+    reasonElement.textContent =
+        reason ||
+        "Es wurde ein Vertraulichkeitswunsch erkannt.";
+
+
+    const familyButton =
+        document.createElement(
+            "button"
+        );
+
+    familyButton.textContent =
+        "🔒 Nur Familie";
+
+    familyButton.onclick =
+        () =>
+            setVisibility(
+                "family"
+            );
+
+
+    const allButton =
+        document.createElement(
+            "button"
+        );
+
+    allButton.textContent =
+        "Für Memoiren geeignet";
+
+    allButton.onclick =
+        () =>
+            setVisibility(
+                "all"
+            );
+
+
+    box.appendChild(
+        title
+    );
+
+    box.appendChild(
+        question
+    );
+
+    box.appendChild(
+        reasonElement
+    );
+
+    box.appendChild(
+        familyButton
+    );
+
+    box.appendChild(
+        allButton
+    );
+
+
+    privacyContainer.appendChild(
+        box
+    );
+
+
+    box.scrollIntoView({
+        behavior:
+            "smooth",
+
+        block:
+            "center"
+    });
+}
+
+
+/* =========================================================
+   RESET
+========================================================= */
+
+function resetView() {
+
+    currentAnswerId =
+        null;
+
+    currentHistoryId =
+        null;
+
+
+    transcriptElement.textContent =
+        "Noch keine Aufnahme.";
+
+    summaryElement.textContent =
+        "Noch keine Auswertung.";
+
+
+    clearPrivacy();
+
+
+    followUpBox.style.display =
+        "none";
+
+
+    currentFollowUpQuestion =
+        "";
+
+
+    debugElement.textContent =
+        "Version: auth-v2";
+}
+
+
+/* =========================================================
+   FRAGE LADEN
+========================================================= */
+
+async function loadQuestion() {
+
+    try {
+
+        resetView();
+
+
+        statusElement.textContent =
+            "Frage wird geladen ...";
+
+
+        const response =
+            await apiFetch(
+                `/question/next?profile_id=${currentProfileId}`
+            );
+
+
+        const data =
+            await response.json();
+
+
+        if (!response.ok) {
+
+            throw new Error(
+                data.detail ||
+                "Frage konnte nicht geladen werden."
+            );
+        }
+
+
+        currentHistoryId =
+            data.history_id;
+
+
+        questionElement.textContent =
+            data.question.text;
+
+
+        statusElement.textContent =
+            "";
+
+    }
+
+    catch (error) {
+
+        console.error(error);
+
+
+        statusElement.textContent =
+            "Fehler: " +
+            error.message;
+    }
+}
+
+
+/* =========================================================
+   ANTWORT ANLEGEN
+========================================================= */
+
+async function createEmptyAnswer() {
+
+    const response =
+        await apiFetch(
+            "/answer",
+            {
+                method:
+                    "POST",
+
+                headers: {
+                    "Content-Type":
+                        "application/json"
+                },
+
+                body:
+                    JSON.stringify({
+                        history_id:
+                            currentHistoryId,
+
+                        text:
+                            ""
+                    })
+            }
+        );
+
+
+    const data =
+        await response.json();
+
+
+    if (!response.ok) {
+
+        throw new Error(
+            data.detail ||
+            "Antwort konnte nicht angelegt werden."
+        );
+    }
+
+
+    currentAnswerId =
+        data.answer.id;
+}
+
+
+/* =========================================================
+   AUFNAHME STARTEN
+========================================================= */
+
+async function startRecording() {
+
+    try {
+
+        const format =
+            selectRecordingFormat();
+
+
+        if (!format) {
+
+            throw new Error(
+                "Kein geeignetes Audioformat verfügbar."
+            );
+        }
+
+
+        recordingMimeType =
+            format.mime;
+
+        recordingExtension =
+            format.extension;
+
+
+        const stream =
+            await navigator
+                .mediaDevices
+                .getUserMedia({
+                    audio:
+                        true
+                });
+
+
+        mediaRecorder =
+            new MediaRecorder(
+                stream,
+                {
+                    mimeType:
+                        recordingMimeType,
+
+                    audioBitsPerSecond:
+                        128000
+                }
+            );
+
+
+        audioChunks =
+            [];
+
+
+        mediaRecorder.ondataavailable =
+            event => {
+
+                if (
+                    event.data &&
+                    event.data.size > 0
+                ) {
+
+                    audioChunks.push(
+                        event.data
+                    );
+                }
+            };
+
+
+        mediaRecorder.onstop =
+            uploadRecording;
+
+
+        mediaRecorder.start();
+
+
+        recordButton.textContent =
+            "⏹ Aufnahme stoppen";
+
+
+        statusElement.textContent =
+            "Aufnahme läuft ...";
+
+    }
+
+    catch (error) {
+
+        console.error(error);
+
+
+        statusElement.textContent =
+            error.message;
+    }
+}
+
+
+/* =========================================================
+   AUFNAHME STOPPEN
+========================================================= */
+
+function stopRecording() {
+
+    if (
+        mediaRecorder &&
+        mediaRecorder.state !== "inactive"
+    ) {
+
+        mediaRecorder.stop();
+
+
+        mediaRecorder.stream
+            .getTracks()
+            .forEach(
+                track =>
+                    track.stop()
+            );
+    }
+
+
+    recordButton.textContent =
+        "🎙 Aufnahme starten";
+}
+
+
+/* =========================================================
+   AUDIO UPLOAD
+========================================================= */
+
+async function uploadRecording() {
+
+    try {
+
+        statusElement.textContent =
+            "Audio wird gespeichert ...";
+
+
+        clearPrivacy();
+
+
+        if (!audioChunks.length) {
+
+            throw new Error(
+                "Keine Aufnahme vorhanden."
+            );
+        }
+
+
+        if (!currentAnswerId) {
+
+            await createEmptyAnswer();
+        }
+
+
+        const actualMimeType =
+            mediaRecorder.mimeType ||
+            recordingMimeType;
+
+
+        const audioBlob =
+            new Blob(
+                audioChunks,
+                {
+                    type:
+                        actualMimeType
+                }
+            );
+
+
+        debugElement.textContent =
+            `Version: auth-v2 | Audio: ${
+                Math.round(
+                    audioBlob.size
+                    / 1024
+                )
+            } KB`;
+
+
+        const formData =
+            new FormData();
+
+
+        formData.append(
+            "answer_id",
+            currentAnswerId
+        );
+
+
+        formData.append(
+            "audio",
+            audioBlob,
+            `aufnahme.${recordingExtension}`
+        );
+
+
+        const response =
+            await apiFetch(
+                "/audio/upload",
+                {
+                    method:
+                        "POST",
+
+                    body:
+                        formData
+                }
+            );
+
+
+        const data =
+            await response.json();
+
+
+        if (!response.ok) {
+
+            throw new Error(
+                data.detail ||
+                "Audio-Upload fehlgeschlagen."
+            );
+        }
+
+
+        statusElement.textContent =
+            "Audio gespeichert – Text wird erkannt ...";
+
+
+        await transcribe();
+
+    }
+
+    catch (error) {
+
+        console.error(error);
+
+
+        statusElement.textContent =
+            "Fehler: " +
+            error.message;
+    }
+}
+
+
+/* =========================================================
+   TRANSKRIPTION
+========================================================= */
+
+async function transcribe() {
+
+    const response =
+        await apiFetch(
+            `/answer/${currentAnswerId}/transcribe`,
+            {
+                method:
+                    "POST"
+            }
+        );
+
+
+    const data =
+        await response.json();
+
+
+    if (!response.ok) {
+
+        throw new Error(
+            data.detail ||
+            "Transkription fehlgeschlagen."
+        );
+    }
+
+
+    transcriptElement.textContent =
+        data.transcript ||
+        "(kein Text erkannt)";
+
+
+    summaryElement.textContent =
+        "Die Erinnerung wird gerade ausgewertet …";
+
+
+    statusElement.textContent =
+        "Gespeichert. Auswertung läuft noch …";
+
+
+    await new Promise(
+        resolve =>
+            requestAnimationFrame(
+                () =>
+                    requestAnimationFrame(
+                        resolve
+                    )
+            )
+    );
+
+
+    await analyze();
+}
+
+
+/* =========================================================
+   ANALYSE
+========================================================= */
+
+async function analyze() {
+
+    try {
+
+        const response =
+            await apiFetch(
+                `/answer/${currentAnswerId}/analyze`,
+                {
+                    method:
+                        "POST"
+                }
+            );
+
+
+        const data =
+            await response.json();
+
+
+        console.log(
+            "Analyse:",
+            data
+        );
+
+
+        if (!response.ok) {
+
+            throw new Error(
+                data.detail ||
+                "KI-Auswertung fehlgeschlagen."
+            );
+        }
+
+
+        summaryElement.textContent =
+            data.memory?.summary ||
+            "Keine Zusammenfassung erzeugt.";
+
+
+        if (
+            data.privacy_signal === true
+        ) {
+
+            showPrivacy(
+                data.privacy_reason
+            );
+
+
+            statusElement.textContent =
+                "Bitte entscheide kurz über die Vertraulichkeit.";
+
+        }
+
+        else {
+
+            clearPrivacy();
+
+
+            statusElement.textContent =
+                "Fertig gespeichert.";
+        }
+
+
+        currentFollowUpQuestion =
+            data.follow_up_question ||
+            "";
+
+
+        if (
+            currentFollowUpQuestion
+        ) {
+
+            followUpQuestionElement
+                .textContent =
+                    currentFollowUpQuestion;
+
+
+            followUpBox.style.display =
+                "block";
+
+        }
+
+        else {
+
+            followUpBox.style.display =
+                "none";
+        }
+
+    }
+
+    catch (error) {
+
+        console.error(error);
+
+
+        summaryElement.textContent =
+            "Die automatische Auswertung ist fehlgeschlagen.";
+
+
+        statusElement.textContent =
+            "Die Erinnerung selbst wurde trotzdem gespeichert.";
+    }
+}
+
+
+/* =========================================================
+   SICHTBARKEIT
+========================================================= */
+
+async function setVisibility(
+    visibility
+) {
+
+    try {
+
+        const response =
+            await apiFetch(
+                `/answer/${currentAnswerId}/visibility`,
+                {
+                    method:
+                        "POST",
+
+                    headers: {
+                        "Content-Type":
+                            "application/json"
+                    },
+
+                    body:
+                        JSON.stringify({
+                            visibility
+                        })
+                }
+            );
+
+
+        const data =
+            await response.json();
+
+
+        if (!response.ok) {
+
+            throw new Error(
+                data.detail ||
+                "Sichtbarkeit konnte nicht geändert werden."
+            );
+        }
+
+
+        clearPrivacy();
+
+
+        if (
+            visibility === "family"
+        ) {
+
+            statusElement.textContent =
+                "🔒 Diese Erinnerung bleibt im Familienarchiv.";
+
+        }
+
+        else {
+
+            statusElement.textContent =
+                "Diese Erinnerung darf später für die Memoiren berücksichtigt werden.";
+        }
+
+    }
+
+    catch (error) {
+
+        console.error(error);
+
+
+        statusElement.textContent =
+            "Fehler: " +
+            error.message;
+    }
+}
+
+
+/* =========================================================
+   FOLGEFRAGE
+========================================================= */
+
+async function activateFollowUp() {
+
+    try {
+
+        const parentAnswerId =
+            currentAnswerId;
+
+
+        statusElement.textContent =
+            "Nachfrage wird vorbereitet ...";
+
+
+        const response =
+            await apiFetch(
+                "/question/follow-up",
+                {
+                    method:
+                        "POST",
+
+                    headers: {
+                        "Content-Type":
+                            "application/json"
+                    },
+
+                    body:
+                        JSON.stringify({
+                            profile_id:
+                                currentProfileId,
+
+                            parent_answer_id:
+                                parentAnswerId,
+
+                            text:
+                                currentFollowUpQuestion
+                        })
+                }
+            );
+
+
+        const data =
+            await response.json();
+
+
+        if (!response.ok) {
+
+            throw new Error(
+                data.detail ||
+                "Nachfrage konnte nicht gespeichert werden."
+            );
+        }
+
+
+        currentHistoryId =
+            data.history_id;
+
+
+        currentAnswerId =
+            null;
+
+
+        questionElement.textContent =
+            data.question.text;
+
+
+        transcriptElement.textContent =
+            "Noch keine Aufnahme.";
+
+
+        summaryElement.textContent =
+            "Noch keine Auswertung.";
+
+
+        clearPrivacy();
+
+
+        followUpBox.style.display =
+            "none";
+
+
+        currentFollowUpQuestion =
+            "";
+
+
+        statusElement.textContent =
+            "Du kannst jetzt auf die Nachfrage antworten.";
+
+    }
+
+    catch (error) {
+
+        console.error(error);
+
+
+        statusElement.textContent =
+            "Fehler: " +
+            error.message;
+    }
+}
+
+
+/* =========================================================
+   EVENTS
+========================================================= */
+
+loginButton.addEventListener(
+    "click",
+    login
+);
+
+
+passwordInput.addEventListener(
+    "keydown",
+    event => {
+
+        if (
+            event.key === "Enter"
+        ) {
+
+            login();
+        }
+    }
+);
+
+
+logoutButton.addEventListener(
+    "click",
+    logout
+);
+
+
+recordButton.addEventListener(
+    "click",
+    async () => {
+
+        if (
+            !mediaRecorder ||
+            mediaRecorder.state === "inactive"
+        ) {
+
+            await startRecording();
+
+        }
+
+        else {
+
+            stopRecording();
+        }
+    }
+);
+
+
+nextButton.addEventListener(
+    "click",
+    loadQuestion
+);
+
+
+followUpButton.addEventListener(
+    "click",
+    activateFollowUp
+);
+
+
+skipFollowUpButton.addEventListener(
+    "click",
+    loadQuestion
+);
+
+
+/* =========================================================
+   START
+========================================================= */
+
+initializeAuth();
+
+</script>
+
+</body>
+
+</html>
