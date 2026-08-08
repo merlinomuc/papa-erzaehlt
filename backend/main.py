@@ -29,9 +29,7 @@ from supabase import create_client, Client
 load_dotenv()
 
 SUPABASE_URL = os.getenv("SUPABASE_URL")
-SUPABASE_SERVICE_ROLE_KEY = os.getenv(
-    "SUPABASE_SERVICE_ROLE_KEY"
-)
+SUPABASE_SERVICE_ROLE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 
 FFMPEG_PATH = os.getenv(
@@ -53,7 +51,9 @@ if not SUPABASE_SERVICE_ROLE_KEY:
     )
 
 if not OPENAI_API_KEY:
-    raise RuntimeError("OPENAI_API_KEY fehlt.")
+    raise RuntimeError(
+        "OPENAI_API_KEY fehlt."
+    )
 
 if (
     FFMPEG_PATH != "ffmpeg"
@@ -65,7 +65,7 @@ if (
 
 
 # =========================================================
-# CLIENTS
+# CLIENTS / APP
 # =========================================================
 
 supabase: Client = create_client(
@@ -76,11 +76,6 @@ supabase: Client = create_client(
 openai_client = OpenAI(
     api_key=OPENAI_API_KEY
 )
-
-
-# =========================================================
-# APP
-# =========================================================
 
 app = FastAPI(
     title="Papa erzählt API"
@@ -137,13 +132,19 @@ class TimelineUpdate(BaseModel):
 
 
 # =========================================================
-# AUTH
+# HILFSFUNKTIONEN
 # =========================================================
+
+def utc_now_iso() -> str:
+    return datetime.now(
+        timezone.utc
+    ).isoformat()
+
 
 def get_current_app_user(
     authorization: str | None = Header(
         default=None
-    )
+    ),
 ):
     if not authorization:
         raise HTTPException(
@@ -151,7 +152,10 @@ def get_current_app_user(
             detail="Nicht angemeldet.",
         )
 
-    parts = authorization.split(" ", 1)
+    parts = authorization.split(
+        " ",
+        1,
+    )
 
     if (
         len(parts) != 2
@@ -159,7 +163,10 @@ def get_current_app_user(
     ):
         raise HTTPException(
             status_code=401,
-            detail="Ungültiger Authorization-Header.",
+            detail=(
+                "Ungültiger "
+                "Authorization-Header."
+            ),
         )
 
     token = parts[1].strip()
@@ -172,13 +179,20 @@ def get_current_app_user(
 
     try:
         auth_response = (
-            supabase.auth.get_user(token)
+            supabase.auth.get_user(
+                token
+            )
         )
 
-        auth_user = auth_response.user
+        auth_user = (
+            auth_response.user
+        )
 
     except Exception as exc:
-        print("AUTH ERROR:", exc)
+        print(
+            "AUTH ERROR:",
+            exc,
+        )
 
         raise HTTPException(
             status_code=401,
@@ -232,14 +246,18 @@ def get_current_app_user(
     return app_user
 
 
-def require_writer(current_user):
+def require_writer(
+    current_user
+):
     if current_user["role"] not in (
         "admin",
         "narrator",
     ):
         raise HTTPException(
             status_code=403,
-            detail="Keine Schreibberechtigung.",
+            detail=(
+                "Keine Schreibberechtigung."
+            ),
         )
 
 
@@ -247,13 +265,20 @@ def authorize_profile(
     current_user,
     profile_id: str,
 ):
-    require_writer(current_user)
+    require_writer(
+        current_user
+    )
 
-    if current_user["role"] == "admin":
+    if (
+        current_user["role"]
+        == "admin"
+    ):
         return
 
-    own_profile_id = current_user.get(
-        "profile_id"
+    own_profile_id = (
+        current_user.get(
+            "profile_id"
+        )
     )
 
     if (
@@ -276,15 +301,17 @@ def authorize_read_profile(
 ):
     role = current_user["role"]
 
-    if role == "admin":
-        return
-
-    if role == "reader":
+    if role in (
+        "admin",
+        "reader",
+    ):
         return
 
     if role == "narrator":
-        own_profile_id = current_user.get(
-            "profile_id"
+        own_profile_id = (
+            current_user.get(
+                "profile_id"
+            )
         )
 
         if (
@@ -296,16 +323,23 @@ def authorize_read_profile(
 
     raise HTTPException(
         status_code=403,
-        detail="Keine Leseberechtigung.",
+        detail=(
+            "Keine Leseberechtigung."
+        ),
     )
 
 
-def get_answer_or_404(answer_id: str):
+def get_answer_or_404(
+    answer_id: str
+):
     result = (
         supabase
         .table("answers")
         .select("*")
-        .eq("id", answer_id)
+        .eq(
+            "id",
+            answer_id,
+        )
         .limit(1)
         .execute()
     )
@@ -313,18 +347,25 @@ def get_answer_or_404(answer_id: str):
     if not result.data:
         raise HTTPException(
             status_code=404,
-            detail="Antwort nicht gefunden.",
+            detail=(
+                "Antwort nicht gefunden."
+            ),
         )
 
     return result.data[0]
 
 
-def get_history_or_404(history_id: str):
+def get_history_or_404(
+    history_id: str
+):
     result = (
         supabase
         .table("question_history")
         .select("*")
-        .eq("id", history_id)
+        .eq(
+            "id",
+            history_id,
+        )
         .limit(1)
         .execute()
     )
@@ -332,10 +373,290 @@ def get_history_or_404(history_id: str):
     if not result.data:
         raise HTTPException(
             status_code=404,
-            detail="Fragenverlauf nicht gefunden.",
+            detail=(
+                "Fragenverlauf "
+                "nicht gefunden."
+            ),
         )
 
     return result.data[0]
+
+
+def get_question_or_none(
+    question_id: str | None
+):
+    if not question_id:
+        return None
+
+    result = (
+        supabase
+        .table("questions")
+        .select(
+            "id, text, category, "
+            "source, parent_answer_id"
+        )
+        .eq(
+            "id",
+            question_id,
+        )
+        .limit(1)
+        .execute()
+    )
+
+    if not result.data:
+        return None
+
+    return result.data[0]
+
+
+def get_root_answer(
+    answer: dict
+):
+    """
+    Ermittelt die erste Antwort
+    einer Folgefrage-Kette.
+    """
+
+    current = answer
+    visited = set()
+
+    while True:
+        current_id = str(
+            current.get("id")
+        )
+
+        if current_id in visited:
+            return current
+
+        visited.add(
+            current_id
+        )
+
+        question = (
+            get_question_or_none(
+                current.get(
+                    "question_id"
+                )
+            )
+        )
+
+        if not question:
+            return current
+
+        parent_answer_id = (
+            question.get(
+                "parent_answer_id"
+            )
+        )
+
+        if not parent_answer_id:
+            return current
+
+        parent_result = (
+            supabase
+            .table("answers")
+            .select("*")
+            .eq(
+                "id",
+                parent_answer_id,
+            )
+            .limit(1)
+            .execute()
+        )
+
+        if not parent_result.data:
+            return current
+
+        current = (
+            parent_result.data[0]
+        )
+
+
+def get_timeline_family_answer_ids(
+    root_answer_id: str,
+):
+    """
+    Liefert die Hauptantwort und
+    sämtliche vorhandenen Folgeantworten,
+    auch über mehrere Ebenen.
+    """
+
+    collected = []
+    queue = [
+        root_answer_id
+    ]
+    seen = set()
+
+    while queue:
+        parent_answer_id = (
+            queue.pop(0)
+        )
+
+        if (
+            parent_answer_id
+            in seen
+        ):
+            continue
+
+        seen.add(
+            parent_answer_id
+        )
+
+        collected.append(
+            parent_answer_id
+        )
+
+        child_questions_result = (
+            supabase
+            .table("questions")
+            .select("id")
+            .eq(
+                "parent_answer_id",
+                parent_answer_id,
+            )
+            .execute()
+        )
+
+        child_question_ids = [
+            row["id"]
+            for row in (
+                child_questions_result.data
+                or []
+            )
+            if row.get("id")
+        ]
+
+        if not child_question_ids:
+            continue
+
+        child_answers_result = (
+            supabase
+            .table("answers")
+            .select("id")
+            .in_(
+                "question_id",
+                child_question_ids,
+            )
+            .execute()
+        )
+
+        for row in (
+            child_answers_result.data
+            or []
+        ):
+            child_answer_id = (
+                row.get("id")
+            )
+
+            if (
+                child_answer_id
+                and child_answer_id
+                not in seen
+            ):
+                queue.append(
+                    child_answer_id
+                )
+
+    return collected
+
+
+def update_timeline_family(
+    answer: dict,
+    timeline_year: int | None,
+    timeline_label: str | None,
+    timeline_confidence: str,
+):
+    """
+    Speichert dieselbe Zeitangabe
+    in der kompletten Erinnerungs-Kette.
+    """
+
+    root_answer = (
+        get_root_answer(
+            answer
+        )
+    )
+
+    family_ids = (
+        get_timeline_family_answer_ids(
+            root_answer["id"]
+        )
+    )
+
+    update_data = {
+        "timeline_year":
+            timeline_year,
+
+        "timeline_label":
+            timeline_label,
+
+        "timeline_confidence":
+            timeline_confidence,
+    }
+
+    if family_ids:
+        (
+            supabase
+            .table("answers")
+            .update(
+                update_data
+            )
+            .in_(
+                "id",
+                family_ids,
+            )
+            .execute()
+        )
+
+    return (
+        root_answer,
+        family_ids,
+    )
+
+
+def normalize_timeline(
+    year,
+    label,
+    confidence,
+):
+    if confidence not in (
+        "exact",
+        "approximate",
+        "unknown",
+    ):
+        confidence = "unknown"
+
+    if not isinstance(
+        year,
+        int,
+    ):
+        year = None
+
+    if (
+        year is not None
+        and (
+            year < 1800
+            or year > 2100
+        )
+    ):
+        year = None
+        confidence = "unknown"
+
+    label = (
+        label or ""
+    ).strip()
+
+    if (
+        year is None
+        and not label
+    ):
+        confidence = "unknown"
+
+    return (
+        year,
+        label,
+        confidence,
+    )
 
 
 # =========================================================
@@ -357,17 +678,21 @@ def health():
 def me(
     current_user=Depends(
         get_current_app_user
-    )
+    ),
 ):
     return {
         "id":
             current_user["id"],
 
         "auth_user_id":
-            current_user["auth_user_id"],
+            current_user[
+                "auth_user_id"
+            ],
 
         "display_name":
-            current_user["display_name"],
+            current_user[
+                "display_name"
+            ],
 
         "role":
             current_user["role"],
@@ -392,9 +717,11 @@ def me(
 def profiles(
     current_user=Depends(
         get_current_app_user
-    )
+    ),
 ):
-    role = current_user["role"]
+    role = (
+        current_user["role"]
+    )
 
     if role in (
         "admin",
@@ -404,15 +731,19 @@ def profiles(
             supabase
             .table("profiles")
             .select("*")
-            .order("display_name")
+            .order(
+                "display_name"
+            )
             .execute()
         )
 
         return result.data
 
     if role == "narrator":
-        profile_id = current_user.get(
-            "profile_id"
+        profile_id = (
+            current_user.get(
+                "profile_id"
+            )
         )
 
         if not profile_id:
@@ -422,7 +753,10 @@ def profiles(
             supabase
             .table("profiles")
             .select("*")
-            .eq("id", profile_id)
+            .eq(
+                "id",
+                profile_id,
+            )
             .execute()
         )
 
@@ -435,7 +769,7 @@ def profiles(
 
 
 # =========================================================
-# ARCHIV / ERINNERUNGEN
+# ARCHIV
 # =========================================================
 
 @app.get("/archive")
@@ -471,12 +805,20 @@ def archive(
         .execute()
     )
 
-    answers = answers_result.data or []
+    answers = (
+        answers_result.data
+        or []
+    )
 
     if not answers:
         return {
             "items": []
         }
+
+    answer_ids = [
+        row["id"]
+        for row in answers
+    ]
 
     memories_result = (
         supabase
@@ -484,16 +826,15 @@ def archive(
         .select("*")
         .in_(
             "answer_id",
-            [
-                row["id"]
-                for row in answers
-            ],
+            answer_ids,
         )
         .execute()
     )
 
     memory_map = {
-        row["answer_id"]: row
+        row["answer_id"]:
+            row
+
         for row in (
             memories_result.data
             or []
@@ -503,8 +844,12 @@ def archive(
     question_ids = list(
         {
             row["question_id"]
+
             for row in answers
-            if row.get("question_id")
+
+            if row.get(
+                "question_id"
+            )
         }
     )
 
@@ -515,7 +860,8 @@ def archive(
             supabase
             .table("questions")
             .select(
-                "id, text, category, source"
+                "id, text, category, "
+                "source, parent_answer_id"
             )
             .in_(
                 "id",
@@ -525,7 +871,9 @@ def archive(
         )
 
         question_map = {
-            row["id"]: row
+            row["id"]:
+                row
+
             for row in (
                 question_result.data
                 or []
@@ -537,9 +885,15 @@ def archive(
     for answer in answers:
         question = None
 
-        if answer.get("question_id"):
-            question = question_map.get(
-                answer["question_id"]
+        if answer.get(
+            "question_id"
+        ):
+            question = (
+                question_map.get(
+                    answer[
+                        "question_id"
+                    ]
+                )
             )
 
         items.append(
@@ -607,7 +961,8 @@ def archive(
         )
 
     return {
-        "items": items
+        "items":
+            items
     }
 
 
@@ -615,7 +970,9 @@ def archive(
 # ZEITANGABE ÄNDERN
 # =========================================================
 
-@app.post("/answer/{answer_id}/timeline")
+@app.post(
+    "/answer/{answer_id}/timeline"
+)
 def update_timeline(
     answer_id: str,
     payload: TimelineUpdate,
@@ -623,8 +980,10 @@ def update_timeline(
         get_current_app_user
     ),
 ):
-    answer = get_answer_or_404(
-        answer_id
+    answer = (
+        get_answer_or_404(
+            answer_id
+        )
     )
 
     authorize_profile(
@@ -644,15 +1003,19 @@ def update_timeline(
         raise HTTPException(
             status_code=400,
             detail=(
-                "Ungültige timeline_confidence."
+                "Ungültige "
+                "timeline_confidence."
             ),
         )
 
     if (
-        payload.timeline_year is not None
+        payload.timeline_year
+        is not None
         and (
-            payload.timeline_year < 1800
-            or payload.timeline_year > 2100
+            payload.timeline_year
+            < 1800
+            or payload.timeline_year
+            > 2100
         )
     ):
         raise HTTPException(
@@ -669,43 +1032,49 @@ def update_timeline(
         else None
     )
 
-    update_data = {
-        "timeline_year":
-            payload.timeline_year,
-
-        "timeline_label":
-            label,
-
-        "timeline_confidence":
-            (
-                payload.timeline_confidence
-                or (
-                    "unknown"
-                    if payload.timeline_year
-                    is None
-                    else "approximate"
-                )
-            ),
-    }
-
-    result = (
-        supabase
-        .table("answers")
-        .update(update_data)
-        .eq(
-            "id",
-            answer_id,
+    confidence = (
+        payload.timeline_confidence
+        or (
+            "unknown"
+            if payload.timeline_year
+            is None
+            else "approximate"
         )
-        .execute()
+    )
+
+    (
+        root_answer,
+        family_ids,
+    ) = (
+        update_timeline_family(
+            answer=answer,
+            timeline_year=
+                payload.timeline_year,
+            timeline_label=
+                label,
+            timeline_confidence=
+                confidence,
+        )
+    )
+
+    updated = (
+        get_answer_or_404(
+            answer_id
+        )
     )
 
     return {
-        "status": "updated",
-        "answer": (
-            result.data[0]
-            if result.data
-            else update_data
-        ),
+        "status":
+            "updated",
+
+        "answer":
+            updated,
+
+        "timeline_root_answer_id":
+            root_answer["id"],
+
+        "updated_answer_ids":
+            family_ids,
     }
 
 
@@ -729,7 +1098,10 @@ def next_question(
         supabase
         .table("profiles")
         .select("id")
-        .eq("id", profile_id)
+        .eq(
+            "id",
+            profile_id,
+        )
         .limit(1)
         .execute()
     )
@@ -737,14 +1109,19 @@ def next_question(
     if not profile_result.data:
         raise HTTPException(
             status_code=404,
-            detail="Profil nicht gefunden.",
+            detail=(
+                "Profil nicht gefunden."
+            ),
         )
 
     questions_result = (
         supabase
         .table("questions")
         .select("*")
-        .neq("source", "follow_up")
+        .neq(
+            "source",
+            "follow_up",
+        )
         .execute()
     )
 
@@ -756,7 +1133,9 @@ def next_question(
     if not questions:
         raise HTTPException(
             status_code=404,
-            detail="Keine Fragen vorhanden.",
+            detail=(
+                "Keine Fragen vorhanden."
+            ),
         )
 
     history_result = (
@@ -774,13 +1153,16 @@ def next_question(
 
     answered_ids = {
         row["question_id"]
+
         for row in (
             history_result.data
             or []
         )
+
         if (
             row.get("status")
             == "answered"
+
             and row.get(
                 "question_id"
             )
@@ -789,7 +1171,9 @@ def next_question(
 
     available = [
         question
+
         for question in questions
+
         if question["id"]
         not in answered_ids
     ]
@@ -797,8 +1181,10 @@ def next_question(
     if not available:
         available = questions
 
-    selected = random.choice(
-        available
+    selected = (
+        random.choice(
+            available
+        )
     )
 
     history_insert = (
@@ -816,15 +1202,15 @@ def next_question(
                     "shown",
 
                 "shown_at":
-                    datetime.now(
-                        timezone.utc
-                    ).isoformat(),
+                    utc_now_iso(),
             }
         )
         .execute()
     )
 
-    history = history_insert.data[0]
+    history = (
+        history_insert.data[0]
+    )
 
     return {
         "history_id":
@@ -839,7 +1225,9 @@ def next_question(
 # FOLGEFRAGE
 # =========================================================
 
-@app.post("/question/follow-up")
+@app.post(
+    "/question/follow-up"
+)
 def create_follow_up(
     payload: FollowUpCreate,
     current_user=Depends(
@@ -851,13 +1239,17 @@ def create_follow_up(
         payload.profile_id,
     )
 
-    parent_answer = get_answer_or_404(
-        payload.parent_answer_id
+    parent_answer = (
+        get_answer_or_404(
+            payload.parent_answer_id
+        )
     )
 
     if (
         str(
-            parent_answer["profile_id"]
+            parent_answer[
+                "profile_id"
+            ]
         )
         != str(
             payload.profile_id
@@ -911,15 +1303,15 @@ def create_follow_up(
                     "shown",
 
                 "shown_at":
-                    datetime.now(
-                        timezone.utc
-                    ).isoformat(),
+                    utc_now_iso(),
             }
         )
         .execute()
     )
 
-    history = history_insert.data[0]
+    history = (
+        history_insert.data[0]
+    )
 
     return {
         "history_id":
@@ -934,15 +1326,19 @@ def create_follow_up(
 # FRAGE BEANTWORTET
 # =========================================================
 
-@app.post("/question/{history_id}/answered")
+@app.post(
+    "/question/{history_id}/answered"
+)
 def question_answered(
     history_id: str,
     current_user=Depends(
         get_current_app_user
     ),
 ):
-    history = get_history_or_404(
-        history_id
+    history = (
+        get_history_or_404(
+            history_id
+        )
     )
 
     authorize_profile(
@@ -959,17 +1355,19 @@ def question_answered(
                     "answered",
 
                 "answered_at":
-                    datetime.now(
-                        timezone.utc
-                    ).isoformat(),
+                    utc_now_iso(),
             }
         )
-        .eq("id", history_id)
+        .eq(
+            "id",
+            history_id,
+        )
         .execute()
     )
 
     return {
-        "status": "answered"
+        "status":
+            "answered"
     }
 
 
@@ -977,15 +1375,19 @@ def question_answered(
 # FRAGE ÜBERSPRINGEN
 # =========================================================
 
-@app.post("/question/{history_id}/skipped")
+@app.post(
+    "/question/{history_id}/skipped"
+)
 def question_skipped(
     history_id: str,
     current_user=Depends(
         get_current_app_user
     ),
 ):
-    history = get_history_or_404(
-        history_id
+    history = (
+        get_history_or_404(
+            history_id
+        )
     )
 
     authorize_profile(
@@ -1002,17 +1404,19 @@ def question_skipped(
                     "skipped",
 
                 "skipped_at":
-                    datetime.now(
-                        timezone.utc
-                    ).isoformat(),
+                    utc_now_iso(),
             }
         )
-        .eq("id", history_id)
+        .eq(
+            "id",
+            history_id,
+        )
         .execute()
     )
 
     return {
-        "status": "skipped"
+        "status":
+            "skipped"
     }
 
 
@@ -1027,18 +1431,79 @@ def create_answer(
         get_current_app_user
     ),
 ):
-    history = get_history_or_404(
-        answer.history_id
+    history = (
+        get_history_or_404(
+            answer.history_id
+        )
     )
 
-    profile_id = history[
-        "profile_id"
-    ]
+    profile_id = (
+        history["profile_id"]
+    )
 
     authorize_profile(
         current_user,
         profile_id,
     )
+
+    question = (
+        get_question_or_none(
+            history.get(
+                "question_id"
+            )
+        )
+    )
+
+    timeline_year = None
+    timeline_label = None
+    timeline_confidence = (
+        "unknown"
+    )
+
+    # -----------------------------------------------------
+    # WICHTIG:
+    # Ist das eine Folgefrage, übernimmt die neue Antwort
+    # sofort die Zeit der ursprünglichen Erinnerung.
+    # -----------------------------------------------------
+
+    if (
+        question
+        and question.get(
+            "parent_answer_id"
+        )
+    ):
+        parent_answer = (
+            get_answer_or_404(
+                question[
+                    "parent_answer_id"
+                ]
+            )
+        )
+
+        root_answer = (
+            get_root_answer(
+                parent_answer
+            )
+        )
+
+        timeline_year = (
+            root_answer.get(
+                "timeline_year"
+            )
+        )
+
+        timeline_label = (
+            root_answer.get(
+                "timeline_label"
+            )
+        )
+
+        timeline_confidence = (
+            root_answer.get(
+                "timeline_confidence"
+            )
+            or "unknown"
+        )
 
     insert_result = (
         supabase
@@ -1071,9 +1536,16 @@ def create_answer(
                     False,
 
                 "answered_at":
-                    datetime.now(
-                        timezone.utc
-                    ).isoformat(),
+                    utc_now_iso(),
+
+                "timeline_year":
+                    timeline_year,
+
+                "timeline_label":
+                    timeline_label,
+
+                "timeline_confidence":
+                    timeline_confidence,
             }
         )
         .execute()
@@ -1092,9 +1564,7 @@ def create_answer(
                     "answered",
 
                 "answered_at":
-                    datetime.now(
-                        timezone.utc
-                    ).isoformat(),
+                    utc_now_iso(),
             }
         )
         .eq(
@@ -1153,9 +1623,7 @@ def create_free_answer(
                     False,
 
                 "answered_at":
-                    datetime.now(
-                        timezone.utc
-                    ).isoformat(),
+                    utc_now_iso(),
 
                 "timeline_confidence":
                     "unknown",
@@ -1174,7 +1642,9 @@ def create_free_answer(
 # ENTWURF VERWERFEN
 # =========================================================
 
-@app.post("/answer/{answer_id}/discard")
+@app.post(
+    "/answer/{answer_id}/discard"
+)
 def discard_answer(
     answer_id: str,
     payload: DiscardAnswerRequest,
@@ -1182,8 +1652,10 @@ def discard_answer(
         get_current_app_user
     ),
 ):
-    answer = get_answer_or_404(
-        answer_id
+    answer = (
+        get_answer_or_404(
+            answer_id
+        )
     )
 
     authorize_profile(
@@ -1194,13 +1666,23 @@ def discard_answer(
     history = None
 
     if payload.history_id:
-        history = get_history_or_404(
-            payload.history_id
+        history = (
+            get_history_or_404(
+                payload.history_id
+            )
         )
 
         if (
-            str(history["profile_id"])
-            != str(answer["profile_id"])
+            str(
+                history[
+                    "profile_id"
+                ]
+            )
+            != str(
+                answer[
+                    "profile_id"
+                ]
+            )
         ):
             raise HTTPException(
                 status_code=400,
@@ -1210,8 +1692,10 @@ def discard_answer(
                 ),
             )
 
-    audio_path = answer.get(
-        "audio_path"
+    audio_path = (
+        answer.get(
+            "audio_path"
+        )
     )
 
     if audio_path:
@@ -1219,7 +1703,9 @@ def discard_answer(
             (
                 supabase
                 .storage
-                .from_("memories-audio")
+                .from_(
+                    "memories-audio"
+                )
                 .remove(
                     [audio_path]
                 )
@@ -1299,7 +1785,9 @@ def discard_answer(
 # SICHTBARKEIT
 # =========================================================
 
-@app.post("/answer/{answer_id}/visibility")
+@app.post(
+    "/answer/{answer_id}/visibility"
+)
 def update_visibility(
     answer_id: str,
     payload: VisibilityUpdate,
@@ -1319,8 +1807,10 @@ def update_visibility(
             ),
         )
 
-    answer = get_answer_or_404(
-        answer_id
+    answer = (
+        get_answer_or_404(
+            answer_id
+        )
     )
 
     authorize_profile(
@@ -1375,8 +1865,10 @@ async def upload_audio(
         get_current_app_user
     ),
 ):
-    answer = get_answer_or_404(
-        answer_id
+    answer = (
+        get_answer_or_404(
+            answer_id
+        )
     )
 
     authorize_profile(
@@ -1391,9 +1883,14 @@ async def upload_audio(
 
     extension = (
         filename
-        .rsplit(".", 1)[-1]
+        .rsplit(
+            ".",
+            1,
+        )[-1]
         .lower()
+
         if "." in filename
+
         else "webm"
     )
 
@@ -1405,7 +1902,10 @@ async def upload_audio(
         "ogg",
     }
 
-    if extension not in allowed_extensions:
+    if (
+        extension
+        not in allowed_extensions
+    ):
         raise HTTPException(
             status_code=400,
             detail=(
@@ -1414,12 +1914,16 @@ async def upload_audio(
             ),
         )
 
-    file_bytes = await audio.read()
+    file_bytes = (
+        await audio.read()
+    )
 
     if not file_bytes:
         raise HTTPException(
             status_code=400,
-            detail="Audiodatei ist leer.",
+            detail=(
+                "Audiodatei ist leer."
+            ),
         )
 
     now = datetime.now(
@@ -1437,14 +1941,17 @@ async def upload_audio(
         (
             supabase
             .storage
-            .from_("memories-audio")
+            .from_(
+                "memories-audio"
+            )
             .upload(
                 storage_path,
                 file_bytes,
                 {
                     "content-type":
                         audio.content_type
-                        or "application/octet-stream",
+                        or
+                        "application/octet-stream",
 
                     "upsert":
                         "false",
@@ -1498,15 +2005,19 @@ async def upload_audio(
 # TRANSKRIPTION
 # =========================================================
 
-@app.post("/answer/{answer_id}/transcribe")
+@app.post(
+    "/answer/{answer_id}/transcribe"
+)
 def transcribe_answer(
     answer_id: str,
     current_user=Depends(
         get_current_app_user
     ),
 ):
-    answer = get_answer_or_404(
-        answer_id
+    answer = (
+        get_answer_or_404(
+            answer_id
+        )
     )
 
     authorize_profile(
@@ -1514,8 +2025,10 @@ def transcribe_answer(
         answer["profile_id"],
     )
 
-    audio_path = answer.get(
-        "audio_path"
+    audio_path = (
+        answer.get(
+            "audio_path"
+        )
     )
 
     if not audio_path:
@@ -1531,7 +2044,9 @@ def transcribe_answer(
         audio_bytes = (
             supabase
             .storage
-            .from_("memories-audio")
+            .from_(
+                "memories-audio"
+            )
             .download(
                 audio_path
             )
@@ -1553,7 +2068,10 @@ def transcribe_answer(
 
     original_extension = (
         audio_path
-        .rsplit(".", 1)[-1]
+        .rsplit(
+            ".",
+            1,
+        )[-1]
         .lower()
     )
 
@@ -1603,7 +2121,10 @@ def transcribe_answer(
             text=True,
         )
 
-        if process.returncode != 0:
+        if (
+            process.returncode
+            != 0
+        ):
             print(
                 "FFMPEG ERROR:",
                 process.stderr,
@@ -1680,7 +2201,9 @@ def transcribe_answer(
                 and os.path.exists(path)
             ):
                 try:
-                    os.remove(path)
+                    os.remove(
+                        path
+                    )
 
                 except OSError:
                     pass
@@ -1690,15 +2213,19 @@ def transcribe_answer(
 # ANALYSE
 # =========================================================
 
-@app.post("/answer/{answer_id}/analyze")
+@app.post(
+    "/answer/{answer_id}/analyze"
+)
 def analyze_answer(
     answer_id: str,
     current_user=Depends(
         get_current_app_user
     ),
 ):
-    answer = get_answer_or_404(
-        answer_id
+    answer = (
+        get_answer_or_404(
+            answer_id
+        )
     )
 
     authorize_profile(
@@ -1724,8 +2251,10 @@ def analyze_answer(
 
     question_text = ""
 
-    question_id = answer.get(
-        "question_id"
+    question_id = (
+        answer.get(
+            "question_id"
+        )
     )
 
     if question_id:
@@ -1793,8 +2322,7 @@ Format:
 Regeln:
 
 summary:
-Kurze, natürliche und respektvolle
-Zusammenfassung.
+Kurze, natürliche und respektvolle Zusammenfassung.
 Keine neuen Tatsachen erfinden.
 
 people:
@@ -1815,8 +2343,7 @@ Wichtige Stichwörter.
 
 follow_up_question:
 Eine kurze natürliche Nachfrage,
-wenn sich eine interessante Vertiefung
-anbietet.
+wenn sich eine interessante Vertiefung anbietet.
 Das gilt auch für freie Erinnerungen.
 Sonst leerer String.
 
@@ -1880,8 +2407,11 @@ sonst leer.
             openai_client
             .responses
             .create(
-                model="gpt-5-mini",
-                input=prompt,
+                model=
+                    "gpt-5-mini",
+
+                input=
+                    prompt,
             )
         )
 
@@ -1890,17 +2420,27 @@ sonst leer.
             or ""
         ).strip()
 
-        if raw_text.startswith("```"):
-            raw_text = raw_text.strip("`")
+        if raw_text.startswith(
+            "```"
+        ):
+            raw_text = (
+                raw_text.strip(
+                    "`"
+                )
+            )
 
-            if raw_text.startswith("json"):
+            if raw_text.startswith(
+                "json"
+            ):
                 raw_text = (
                     raw_text[4:]
                     .strip()
                 )
 
-        analysis = json.loads(
-            raw_text
+        analysis = (
+            json.loads(
+                raw_text
+            )
         )
 
     except Exception as exc:
@@ -1911,7 +2451,10 @@ sonst leer.
 
         raise HTTPException(
             status_code=500,
-            detail="KI-Auswertung fehlgeschlagen.",
+            detail=(
+                "KI-Auswertung "
+                "fehlgeschlagen."
+            ),
         )
 
     memory_payload = {
@@ -1960,27 +2503,34 @@ sonst leer.
         .table("memories")
         .upsert(
             memory_payload,
-            on_conflict="answer_id",
+            on_conflict=
+                "answer_id",
         )
         .execute()
     )
 
     memory = (
         memory_result.data[0]
+
         if memory_result.data
+
         else memory_payload
     )
 
-    privacy_value = analysis.get(
-        "privacy_signal",
-        False
+    privacy_value = (
+        analysis.get(
+            "privacy_signal",
+            False,
+        )
     )
 
     if isinstance(
         privacy_value,
         bool,
     ):
-        privacy_signal = privacy_value
+        privacy_signal = (
+            privacy_value
+        )
 
     elif isinstance(
         privacy_value,
@@ -1999,80 +2549,231 @@ sonst leer.
         )
 
     else:
-        privacy_signal = bool(
-            privacy_value
+        privacy_signal = (
+            bool(
+                privacy_value
+            )
         )
 
-    timeline_year = analysis.get(
-        "timeline_year"
-    )
-
-    timeline_label = (
-        analysis.get(
-            "timeline_label",
-            ""
-        )
-        or ""
-    ).strip()
-
-    timeline_confidence = (
-        analysis.get(
-            "timeline_confidence",
-            "unknown"
-        )
-        or "unknown"
-    )
-
-    if timeline_confidence not in (
-        "exact",
-        "approximate",
-        "unknown",
-    ):
-        timeline_confidence = "unknown"
-
-    if not isinstance(
+    (
         timeline_year,
-        int,
-    ):
-        timeline_year = None
+        timeline_label,
+        timeline_confidence,
+    ) = (
+        normalize_timeline(
+            analysis.get(
+                "timeline_year"
+            ),
 
-    if (
-        timeline_year is not None
-        and (
-            timeline_year < 1800
-            or timeline_year > 2100
+            analysis.get(
+                "timeline_label",
+                "",
+            ),
+
+            analysis.get(
+                "timeline_confidence",
+                "unknown",
+            )
+            or "unknown",
         )
-    ):
-        timeline_year = None
-        timeline_confidence = "unknown"
+    )
 
-    if (
-        answer.get("timeline_year")
+    root_answer = (
+        get_root_answer(
+            answer
+        )
+    )
+
+    is_follow_up = (
+        str(
+            root_answer["id"]
+        )
+        != str(
+            answer["id"]
+        )
+    )
+
+    if is_follow_up:
+        root_year = (
+            root_answer.get(
+                "timeline_year"
+            )
+        )
+
+        root_label = (
+            root_answer.get(
+                "timeline_label"
+            )
+        )
+
+        root_confidence = (
+            root_answer.get(
+                "timeline_confidence"
+            )
+            or "unknown"
+        )
+
+        if (
+            root_year
+            is not None
+        ):
+            # -------------------------------------------------
+            # Haupt-Erinnerung hat bereits ein Jahr.
+            # Die Folgeantwort bleibt immer bei dieser Zeit.
+            # -------------------------------------------------
+
+            timeline_year = (
+                root_year
+            )
+
+            timeline_label = (
+                root_label
+                or str(
+                    root_year
+                )
+            )
+
+            timeline_confidence = (
+                root_confidence
+            )
+
+            update_timeline_family(
+                answer=
+                    answer,
+
+                timeline_year=
+                    timeline_year,
+
+                timeline_label=
+                    timeline_label,
+
+                timeline_confidence=
+                    timeline_confidence,
+            )
+
+        elif (
+            timeline_year
+            is not None
+        ):
+            # -------------------------------------------------
+            # Erst die Folgeantwort nennt ein Jahr.
+            # Dann bekommt die komplette Erinnerungs-Kette
+            # dieses Jahr.
+            # -------------------------------------------------
+
+            update_timeline_family(
+                answer=
+                    answer,
+
+                timeline_year=
+                    timeline_year,
+
+                timeline_label=
+                    (
+                        timeline_label
+                        or None
+                    ),
+
+                timeline_confidence=
+                    timeline_confidence,
+            )
+
+        else:
+            # -------------------------------------------------
+            # Weder Hauptantwort noch Folgeantwort
+            # haben ein belastbares Jahr.
+            # Die ganze Kette bleibt gemeinsam unbekannt.
+            # -------------------------------------------------
+
+            timeline_year = None
+
+            timeline_label = (
+                root_label
+                or ""
+            )
+
+            timeline_confidence = (
+                root_confidence
+            )
+
+            update_timeline_family(
+                answer=
+                    answer,
+
+                timeline_year=
+                    None,
+
+                timeline_label=
+                    (
+                        timeline_label
+                        or None
+                    ),
+
+                timeline_confidence=
+                    timeline_confidence,
+            )
+
+    elif (
+        answer.get(
+            "timeline_year"
+        )
         is None
     ):
-        (
-            supabase
-            .table("answers")
-            .update(
-                {
-                    "timeline_year":
-                        timeline_year,
+        # -----------------------------------------------------
+        # Hauptantwort:
+        # erkannte Zeit wird auf die gesamte Kette geschrieben.
+        # -----------------------------------------------------
 
-                    "timeline_label":
-                        (
-                            timeline_label
-                            or None
-                        ),
+        update_timeline_family(
+            answer=
+                answer,
 
-                    "timeline_confidence":
-                        timeline_confidence,
-                }
+            timeline_year=
+                timeline_year,
+
+            timeline_label=
+                (
+                    timeline_label
+                    or None
+                ),
+
+            timeline_confidence=
+                timeline_confidence,
+        )
+
+    else:
+        # -----------------------------------------------------
+        # Bereits vorhandene oder manuell korrigierte
+        # Zeitangaben haben Vorrang vor der KI.
+        # -----------------------------------------------------
+
+        timeline_year = (
+            answer.get(
+                "timeline_year"
             )
-            .eq(
-                "id",
-                answer_id,
+        )
+
+        timeline_label = (
+            answer.get(
+                "timeline_label"
             )
-            .execute()
+            or (
+                str(
+                    timeline_year
+                )
+
+                if timeline_year
+                is not None
+
+                else ""
+            )
+        )
+
+        timeline_confidence = (
+            answer.get(
+                "timeline_confidence"
+            )
+            or "unknown"
         )
 
     return {
@@ -2108,4 +2809,7 @@ sonst leer.
 
         "timeline_confidence":
             timeline_confidence,
+
+        "timeline_root_answer_id":
+            root_answer["id"],
     }
