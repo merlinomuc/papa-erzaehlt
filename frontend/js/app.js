@@ -952,48 +952,88 @@ async function discardMemory() {
 }
 
 function confirmMemory() {
-  showScreen(savedScreen);
-
-  if (currentTimelineYear) {
-    const label =
-      currentTimelineLabel ||
-      String(currentTimelineYear);
-
-    savedMessage.textContent =
-      `Gespeichert · zeitlich eingeordnet: ${label}`;
-  } else {
-    savedMessage.textContent =
-      "Gespeichert · die Zeit kann später ergänzt werden.";
-  }
-
-  if (currentPrivacySignal) {
-    showPrivacy(currentPrivacyReason);
-  }
-
-  if (currentFollowUpQuestion) {
-    followUpQuestionElement.textContent =
-      currentFollowUpQuestion;
-
-    if (currentIdentityQuestion && currentIdentityCandidateId) {
-      followUpButton.textContent = "Ja, das ist dieselbe Person";
-      skipFollowUpButton.textContent = "Nein, jemand anderes";
-      followUpButton.onclick = () => resolveCurrentIdentity(true);
-      skipFollowUpButton.onclick = () => resolveCurrentIdentity(false);
-    } else {
-      followUpButton.textContent = "Ja, erzähl weiter";
-      skipFollowUpButton.textContent = "Lieber etwas Neues";
-      followUpButton.onclick = activateFollowUp;
-      skipFollowUpButton.onclick = showHome;
+  try {
+    if (!currentAnswerId) {
+      throw new Error(
+        "Die Erinnerung wurde noch nicht vollständig gespeichert."
+      );
     }
 
-    followUpBox.classList.remove("hidden");
-  } else {
-    followUpButton.textContent = "Ja, erzähl weiter";
-    skipFollowUpButton.textContent = "Lieber etwas Neues";
-    followUpButton.onclick = activateFollowUp;
-    skipFollowUpButton.onclick = showHome;
+    privacyContainer.innerHTML = "";
+    followUpBox.classList.add("hidden");
+
+    if (currentTimelineYear) {
+      const label =
+        currentTimelineLabel ||
+        String(currentTimelineYear);
+
+      savedMessage.textContent =
+        `Gespeichert · zeitlich eingeordnet: ${label}`;
+    } else {
+      savedMessage.textContent =
+        "Gespeichert · die Zeit kann später ergänzt werden.";
+    }
+
+    if (currentPrivacySignal) {
+      showPrivacy(currentPrivacyReason);
+    }
+
+    if (currentFollowUpQuestion) {
+      followUpQuestionElement.textContent =
+        currentFollowUpQuestion;
+
+      if (
+        currentIdentityQuestion &&
+        currentIdentityCandidateId
+      ) {
+        followUpButton.textContent =
+          "Ja, das ist dieselbe Person";
+
+        skipFollowUpButton.textContent =
+          "Nein, jemand anderes";
+
+        followUpButton.onclick =
+          () => resolveCurrentIdentity(true);
+
+        skipFollowUpButton.onclick =
+          () => resolveCurrentIdentity(false);
+      } else {
+        followUpButton.textContent =
+          "Ja, erzähl weiter";
+
+        skipFollowUpButton.textContent =
+          "Lieber etwas Neues";
+
+        followUpButton.onclick =
+          activateFollowUp;
+
+        skipFollowUpButton.onclick =
+          showHome;
+      }
+
+      followUpBox.classList.remove("hidden");
+    }
+
+    showScreen(savedScreen);
+
+    window.scrollTo({
+      top: 0,
+      behavior: "auto"
+    });
+
+  } catch (error) {
+    console.error(
+      "CONFIRM MEMORY ERROR:",
+      error
+    );
+
+    alert(
+      "Die Erinnerung konnte nicht abgeschlossen werden: " +
+      error.message
+    );
   }
 }
+
 
 async function resolveCurrentIdentity(samePerson) {
   if (!currentIdentityCandidateId) return;
@@ -2117,8 +2157,13 @@ recordButton.onclick =
     }
   };
 
-confirmButton.onclick =
-  confirmMemory;
+confirmButton.addEventListener(
+  "click",
+  event => {
+    event.preventDefault();
+    confirmMemory();
+  }
+);
 
 retryButton.onclick =
   retryRecording;
