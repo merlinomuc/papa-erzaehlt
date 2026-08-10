@@ -3673,6 +3673,154 @@ def transcribe_audio_bytes(
 
 
 # =========================================================
+# KI: GESPROCHENE TRANSKRIPT-KORREKTUR
+# =========================================================
+
+def build_transcript_correction_preview(
+    current_text: str,
+    correction_instruction: str,
+):
+    current_text = clean_text(current_text)
+    correction_instruction = clean_text(
+        correction_instruction
+    )
+
+    if not current_text:
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                "Es gibt noch keinen Text, "
+                "der korrigiert werden kann."
+            ),
+        )
+
+    if not correction_instruction:
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                "Die gesprochene Korrektur "
+                "konnte nicht verstanden werden."
+            ),
+        )
+
+    prompt = f"""
+Du hilfst bei der Korrektur eines automatisch
+transkribierten deutschen Erinnerungstextes.
+
+AKTUELLER TEXT:
+{current_text}
+
+GESPROCHENE KORREKTURANWEISUNG:
+{correction_instruction}
+
+Aufgabe:
+- Verändere ausschließlich die Stelle oder Stellen,
+  die durch die Korrekturanweisung eindeutig gemeint sind.
+- Bewahre Wortlaut, Stil, Satzbau und Inhalt des restlichen
+  Textes so exakt wie möglich.
+- Keine stilistische Verbesserung.
+- Keine neue Information ergänzen.
+- Keine Fakten erraten.
+- Wenn die Anweisung nicht eindeutig auf den Text anwendbar
+  ist, ändere nichts.
+
+Beispiele für Korrekturanweisungen:
+- "Ich meinte nicht er, sondern sie."
+- "Ich meinte nicht Hamburg, sondern Hamburger."
+- "Der Name war nicht Nadia, sondern Nadja."
+
+Antworte ausschließlich mit gültigem JSON:
+{{
+  "changed": true,
+  "proposed_text": "vollständiger korrigierter Text",
+  "changes": [
+    {{
+      "before": "betroffene alte Textstelle",
+      "after": "neue Textstelle"
+    }}
+  ],
+  "explanation": "kurze verständliche Beschreibung"
+}}
+
+Wenn keine eindeutige Änderung möglich ist:
+- changed = false
+- proposed_text = exakt der aktuelle Text
+- changes = []
+- explanation erklärt kurz, warum nichts geändert wurde.
+"""
+
+    response = (
+        openai_client
+        .responses
+        .create(
+            model="gpt-5-mini",
+            input=prompt,
+        )
+    )
+
+    result = parse_json_response(
+        response.output_text or ""
+    )
+
+    proposed_text = clean_text(
+        result.get("proposed_text")
+    )
+
+    changed_value = result.get("changed")
+
+    if isinstance(changed_value, bool):
+        changed = changed_value
+    elif isinstance(changed_value, str):
+        changed = (
+            changed_value.strip().lower()
+            in {"true", "1", "yes", "ja"}
+        )
+    else:
+        changed = bool(changed_value)
+
+    if not proposed_text:
+        proposed_text = current_text
+        changed = False
+
+    changes = []
+
+    for item in (
+        result.get("changes", [])
+        or []
+    ):
+        if not isinstance(item, dict):
+            continue
+
+        before = clean_text(
+            item.get("before")
+        )
+        after = clean_text(
+            item.get("after")
+        )
+
+        if before or after:
+            changes.append(
+                {
+                    "before": before,
+                    "after": after,
+                }
+            )
+
+    if proposed_text == current_text:
+        changed = False
+        changes = []
+
+    return {
+        "changed": changed,
+        "proposed_text": proposed_text,
+        "changes": changes,
+        "explanation": clean_text(
+            result.get("explanation")
+        ),
+    }
+
+
+# =========================================================
 # HEALTH
 # =========================================================
 
@@ -4329,6 +4477,105 @@ def update_timeline(
             family_result[
                 "answer_ids"
             ],
+    }
+
+
+# =========================================================
+# GESPROCHENE KORREKTUR: VORSCHAU
+# =========================================================
+
+@app.post(
+    "/answer/{answer_id}/correction/preview/audio"
+)
+async def preview_audio_correction(
+    answer_id: str,
+    audio: UploadFile = File(...),
+    current_user=Depends(
+        get_current_app_user
+    ),
+):
+    answer = get_answer_or_404(
+        answer_id
+    )
+
+    authorize_profile(
+        current_user,
+        answer["profile_id"],
+    )
+
+    current_text = effective_transcript(
+        answer
+    )
+
+    if not current_text:
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                "Es gibt noch kein Transkript, "
+                "das korrigiert werden kann."
+            ),
+        )
+
+    filename = (
+        audio.filename
+        or "korrektur.webm"
+    )
+
+    extension = (
+        filename.rsplit(
+            ".",
+            1,
+        )[-1].lower()
+        if "." in filename
+        else "webm"
+    )
+
+    if extension not in {
+        "webm",
+        "wav",
+        "mp3",
+        "m4a",
+        "ogg",
+    }:
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                "Nicht unterstütztes "
+                "Audioformat."
+            ),
+        )
+
+    file_bytes = await audio.read()
+
+    if not file_bytes:
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                "Die Korrekturaufnahme "
+                "ist leer."
+            ),
+        )
+
+    correction_instruction = (
+        transcribe_audio_bytes(
+            file_bytes,
+            extension,
+        )
+    )
+
+    preview = (
+        build_transcript_correction_preview(
+            current_text,
+            correction_instruction,
+        )
+    )
+
+    return {
+        "status": "preview",
+        "instruction_transcript":
+            correction_instruction,
+        "current_text": current_text,
+        **preview,
     }
 
 

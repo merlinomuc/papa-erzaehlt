@@ -161,6 +161,40 @@
         <div class="eyebrow">Deine Worte</div>
         <div id="transcript"></div>
 
+        <div class="review-correction-tools">
+          <div class="review-correction-actions">
+            <button id="speakCorrectionButton" class="outline-button correction-primary">🎤 Korrektur sprechen</button>
+            <button id="editReviewTranscriptButton" class="text-button">Text selbst bearbeiten</button>
+          </div>
+
+          <div id="reviewCorrectionStatus" class="review-correction-status"></div>
+
+          <div id="reviewCorrectionPreview" class="review-correction-preview hidden">
+            <div class="eyebrow">Korrektur erkannt</div>
+            <div id="reviewCorrectionInstruction" class="correction-instruction"></div>
+            <div id="reviewCorrectionChanges" class="correction-changes"></div>
+            <div id="reviewCorrectionExplanation" class="correction-explanation"></div>
+            <div class="correction-full-preview">
+              <div class="eyebrow">So würde der Text danach lauten</div>
+              <div id="reviewCorrectionFullText"></div>
+            </div>
+            <div class="review-correction-preview-actions">
+              <button id="applyReviewCorrectionButton" class="gold-button">Übernehmen</button>
+              <button id="repeatReviewCorrectionButton" class="outline-button">Nochmal sprechen</button>
+              <button id="cancelReviewCorrectionButton" class="text-button">Abbrechen</button>
+            </div>
+          </div>
+
+          <div id="reviewTranscriptEditPanel" class="review-transcript-edit hidden">
+            <label for="reviewTranscriptTextarea">Korrigierte Fassung</label>
+            <textarea id="reviewTranscriptTextarea" rows="7"></textarea>
+            <div class="review-correction-preview-actions">
+              <button id="saveReviewTranscriptButton" class="gold-button">Korrektur speichern</button>
+              <button id="cancelReviewTranscriptButton" class="text-button">Abbrechen</button>
+            </div>
+          </div>
+        </div>
+
         <div class="review-divider"></div>
 
         <div class="eyebrow">Kurz festgehalten</div>

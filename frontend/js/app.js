@@ -56,6 +56,15 @@ let supplementChunks = [];
 let supplementMimeType = "";
 let supplementExtension = "webm";
 
+let reviewCorrectionRecorder = null;
+let reviewCorrectionStream = null;
+let reviewCorrectionChunks = [];
+let reviewCorrectionMimeType = "";
+let reviewCorrectionExtension = "webm";
+let reviewCorrectionProposedText = "";
+let reviewCorrectionInstructionText = "";
+let currentAnalysisRunning = false;
+
 const startupView = document.getElementById("startupView");
 const loginView = document.getElementById("loginView");
 const appView = document.getElementById("appView");
@@ -118,6 +127,22 @@ const summaryElement = document.getElementById("summary");
 const confirmButton = document.getElementById("confirmButton");
 const retryButton = document.getElementById("retryButton");
 const discardButton = document.getElementById("discardButton");
+
+const speakCorrectionButton = document.getElementById("speakCorrectionButton");
+const editReviewTranscriptButton = document.getElementById("editReviewTranscriptButton");
+const reviewCorrectionStatus = document.getElementById("reviewCorrectionStatus");
+const reviewCorrectionPreview = document.getElementById("reviewCorrectionPreview");
+const reviewCorrectionInstruction = document.getElementById("reviewCorrectionInstruction");
+const reviewCorrectionChanges = document.getElementById("reviewCorrectionChanges");
+const reviewCorrectionExplanation = document.getElementById("reviewCorrectionExplanation");
+const reviewCorrectionFullText = document.getElementById("reviewCorrectionFullText");
+const applyReviewCorrectionButton = document.getElementById("applyReviewCorrectionButton");
+const repeatReviewCorrectionButton = document.getElementById("repeatReviewCorrectionButton");
+const cancelReviewCorrectionButton = document.getElementById("cancelReviewCorrectionButton");
+const reviewTranscriptEditPanel = document.getElementById("reviewTranscriptEditPanel");
+const reviewTranscriptTextarea = document.getElementById("reviewTranscriptTextarea");
+const saveReviewTranscriptButton = document.getElementById("saveReviewTranscriptButton");
+const cancelReviewTranscriptButton = document.getElementById("cancelReviewTranscriptButton");
 
 const savedMessage = document.getElementById("savedMessage");
 const privacyContainer = document.getElementById("privacyContainer");
@@ -322,6 +347,8 @@ function resetStoryState() {
   transcriptElement.textContent = "";
   summaryElement.textContent = "";
   statusElement.textContent = "";
+  currentAnalysisRunning = false;
+  resetReviewCorrectionUI();
 }
 
 async function startQuestionMode() {
@@ -835,6 +862,7 @@ async function handleFinishedRecording() {
     showScreen(reviewScreen);
 
     analyzeStartedAt = performance.now();
+    currentAnalysisRunning = true;
 
     const analyzeResponse =
       await apiFetch(
@@ -846,6 +874,8 @@ async function handleFinishedRecording() {
 
     const analyzeData =
       await analyzeResponse.json();
+
+    currentAnalysisRunning = false;
 
     if (!analyzeResponse.ok) {
       throw new Error(
@@ -902,6 +932,7 @@ async function handleFinishedRecording() {
       `[Roman] Gesamt bis Auswertung: ${((performance.now() - perfStart) / 1000).toFixed(1)} s`
     );
   } catch (error) {
+    currentAnalysisRunning = false;
     console.error(error);
 
     /*
@@ -1018,6 +1049,394 @@ async function discardMemory() {
     statusElement.textContent = error.message;
   } finally {
     discardButton.disabled = false;
+  }
+}
+
+function resetReviewCorrectionUI() {
+  reviewCorrectionProposedText = "";
+  reviewCorrectionInstructionText = "";
+
+  if (reviewCorrectionPreview) {
+    reviewCorrectionPreview.classList.add("hidden");
+  }
+
+  if (reviewTranscriptEditPanel) {
+    reviewTranscriptEditPanel.classList.add("hidden");
+  }
+
+  if (reviewCorrectionStatus) {
+    reviewCorrectionStatus.textContent = "";
+  }
+
+  if (reviewCorrectionInstruction) {
+    reviewCorrectionInstruction.textContent = "";
+  }
+
+  if (reviewCorrectionChanges) {
+    reviewCorrectionChanges.innerHTML = "";
+  }
+
+  if (reviewCorrectionExplanation) {
+    reviewCorrectionExplanation.textContent = "";
+  }
+
+  if (reviewCorrectionFullText) {
+    reviewCorrectionFullText.textContent = "";
+  }
+
+  if (speakCorrectionButton) {
+    speakCorrectionButton.textContent = "🎤 Korrektur sprechen";
+    speakCorrectionButton.classList.remove("recording-inline");
+    speakCorrectionButton.disabled = false;
+  }
+}
+
+async function waitForCurrentAnalysis() {
+  if (!currentAnalysisRunning) return;
+
+  reviewCorrectionStatus.textContent =
+    "Die laufende Einordnung wird kurz fertiggestellt …";
+
+  while (currentAnalysisRunning) {
+    await new Promise(resolve => setTimeout(resolve, 250));
+  }
+}
+
+async function toggleReviewCorrectionRecording() {
+  if (!currentAnswerId) {
+    reviewCorrectionStatus.textContent =
+      "Es gibt noch keine gespeicherte Aufnahme zum Korrigieren.";
+    return;
+  }
+
+  if (
+    reviewCorrectionRecorder &&
+    reviewCorrectionRecorder.state !== "inactive"
+  ) {
+    reviewCorrectionRecorder.stop();
+    return;
+  }
+
+  try {
+    const format = selectRecordingFormat();
+
+    if (!format) {
+      throw new Error(
+        "Dieses Gerät unterstützt die Sprachaufnahme leider nicht."
+      );
+    }
+
+    reviewCorrectionMimeType = format.mime;
+    reviewCorrectionExtension = format.extension;
+    reviewCorrectionChunks = [];
+    reviewCorrectionProposedText = "";
+    reviewCorrectionInstructionText = "";
+
+    reviewCorrectionPreview.classList.add("hidden");
+    reviewTranscriptEditPanel.classList.add("hidden");
+
+    reviewCorrectionStream =
+      await navigator.mediaDevices.getUserMedia({ audio: true });
+
+    reviewCorrectionRecorder = new MediaRecorder(
+      reviewCorrectionStream,
+      {
+        mimeType: reviewCorrectionMimeType,
+        audioBitsPerSecond: 128000
+      }
+    );
+
+    reviewCorrectionRecorder.ondataavailable = event => {
+      if (event.data && event.data.size > 0) {
+        reviewCorrectionChunks.push(event.data);
+      }
+    };
+
+    reviewCorrectionRecorder.onstop = uploadReviewCorrectionRecording;
+    reviewCorrectionRecorder.start();
+
+    speakCorrectionButton.textContent = "Aufnahme beenden";
+    speakCorrectionButton.classList.add("recording-inline");
+    reviewCorrectionStatus.textContent =
+      "Sag zum Beispiel: „Ich meinte nicht er, sondern sie.“";
+  } catch (error) {
+    console.error(error);
+    reviewCorrectionStatus.textContent = error.message;
+  }
+}
+
+async function uploadReviewCorrectionRecording() {
+  if (reviewCorrectionStream) {
+    reviewCorrectionStream.getTracks().forEach(track => track.stop());
+  }
+
+  speakCorrectionButton.textContent = "🎤 Korrektur sprechen";
+  speakCorrectionButton.classList.remove("recording-inline");
+
+  if (!reviewCorrectionChunks.length || !currentAnswerId) {
+    reviewCorrectionStatus.textContent =
+      "Es wurde keine Korrektur aufgenommen.";
+    return;
+  }
+
+  const audioBlob = new Blob(
+    reviewCorrectionChunks,
+    { type: reviewCorrectionMimeType }
+  );
+
+  const formData = new FormData();
+  formData.append(
+    "audio",
+    audioBlob,
+    `korrektur.${reviewCorrectionExtension}`
+  );
+
+  speakCorrectionButton.disabled = true;
+  editReviewTranscriptButton.disabled = true;
+  reviewCorrectionStatus.textContent =
+    "Ich prüfe deine Korrektur …";
+
+  try {
+    const response = await apiFetch(
+      `/answer/${currentAnswerId}/correction/preview/audio`,
+      {
+        method: "POST",
+        body: formData
+      }
+    );
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(
+        data.detail ||
+        "Die gesprochene Korrektur konnte nicht verarbeitet werden."
+      );
+    }
+
+    reviewCorrectionInstructionText =
+      data.instruction_transcript || "";
+    reviewCorrectionProposedText =
+      data.proposed_text || "";
+
+    reviewCorrectionInstruction.textContent =
+      reviewCorrectionInstructionText
+        ? `Du hast gesagt: „${reviewCorrectionInstructionText}“`
+        : "Gesprochene Korrektur";
+
+    reviewCorrectionChanges.innerHTML = "";
+
+    const changes = Array.isArray(data.changes)
+      ? data.changes
+      : [];
+
+    if (data.changed && changes.length) {
+      changes.forEach(change => {
+        const row = document.createElement("div");
+        row.className = "correction-change";
+
+        const before = document.createElement("div");
+        before.className = "correction-before";
+        before.textContent = change.before || "—";
+
+        const arrow = document.createElement("div");
+        arrow.className = "correction-arrow";
+        arrow.textContent = "→";
+
+        const after = document.createElement("div");
+        after.className = "correction-after";
+        after.textContent = change.after || "—";
+
+        row.append(before, arrow, after);
+        reviewCorrectionChanges.appendChild(row);
+      });
+    } else if (data.changed) {
+      const row = document.createElement("div");
+      row.className = "correction-explanation";
+      row.textContent =
+        "Die gewünschte Änderung wurde im Text erkannt.";
+      reviewCorrectionChanges.appendChild(row);
+    } else {
+      const row = document.createElement("div");
+      row.className = "correction-explanation";
+      row.textContent =
+        "Ich konnte keine eindeutige Änderung erkennen.";
+      reviewCorrectionChanges.appendChild(row);
+    }
+
+    reviewCorrectionExplanation.textContent =
+      data.explanation || "";
+
+    reviewCorrectionFullText.textContent =
+      data.proposed_text || transcriptElement.textContent || "";
+
+    applyReviewCorrectionButton.disabled = !data.changed;
+    reviewCorrectionPreview.classList.remove("hidden");
+    reviewCorrectionStatus.textContent =
+      data.changed
+        ? "Bitte kurz prüfen und dann übernehmen."
+        : "Bitte die Korrektur noch einmal sprechen oder den Text bearbeiten.";
+  } catch (error) {
+    console.error(error);
+    reviewCorrectionStatus.textContent = error.message;
+  } finally {
+    speakCorrectionButton.disabled = false;
+    editReviewTranscriptButton.disabled = false;
+  }
+}
+
+function openReviewTranscriptEditor() {
+  if (!currentAnswerId) return;
+
+  reviewCorrectionPreview.classList.add("hidden");
+  reviewTranscriptTextarea.value = transcriptElement.textContent || "";
+  reviewTranscriptEditPanel.classList.remove("hidden");
+  reviewCorrectionStatus.textContent = "";
+  reviewTranscriptTextarea.focus();
+}
+
+async function saveCurrentReviewTranscript(
+  newText,
+  changeNote
+) {
+  const text = (newText || "").trim();
+
+  if (!currentAnswerId || !text) {
+    throw new Error("Der korrigierte Text darf nicht leer sein.");
+  }
+
+  await waitForCurrentAnalysis();
+
+  const response = await apiFetch(
+    `/answer/${currentAnswerId}/transcript`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        text,
+        change_note: changeNote || "Korrektur"
+      })
+    }
+  );
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(
+      data.detail ||
+      "Die Korrektur konnte nicht gespeichert werden."
+    );
+  }
+
+  transcriptElement.textContent = text;
+  summaryElement.textContent =
+    "Die korrigierte Erinnerung wird neu eingeordnet …";
+
+  confirmButton.disabled = true;
+  confirmButton.textContent = "Einordnung läuft …";
+  retryButton.disabled = true;
+  discardButton.disabled = true;
+
+  currentAnalysisRunning = true;
+
+  try {
+    const analyzeResponse = await apiFetch(
+      `/answer/${currentAnswerId}/analyze`,
+      { method: "POST" }
+    );
+
+    const analyzeData = await analyzeResponse.json();
+
+    if (!analyzeResponse.ok) {
+      throw new Error(
+        analyzeData.detail ||
+        "Die korrigierte Erinnerung konnte nicht neu eingeordnet werden."
+      );
+    }
+
+    summaryElement.textContent =
+      analyzeData.memory?.summary ||
+      "Keine Zusammenfassung vorhanden.";
+
+    currentFollowUpQuestion =
+      analyzeData.follow_up_question || "";
+    currentIdentityCandidateId =
+      analyzeData.identity_candidates?.[0]?.id || null;
+    currentIdentityQuestion = Boolean(currentIdentityCandidateId);
+    currentPrivacySignal = analyzeData.privacy_signal === true;
+    currentPrivacyReason = analyzeData.privacy_reason || "";
+    currentTimelineYear = analyzeData.timeline_year;
+    currentTimelineLabel = analyzeData.timeline_label || "";
+    currentTimelineConfidence =
+      analyzeData.timeline_confidence || "unknown";
+  } finally {
+    currentAnalysisRunning = false;
+    confirmButton.disabled = false;
+    confirmButton.textContent = "So speichern";
+    retryButton.disabled = false;
+    discardButton.disabled = false;
+  }
+}
+
+async function applyReviewCorrection() {
+  if (!reviewCorrectionProposedText) return;
+
+  applyReviewCorrectionButton.disabled = true;
+  repeatReviewCorrectionButton.disabled = true;
+  cancelReviewCorrectionButton.disabled = true;
+  reviewCorrectionStatus.textContent =
+    "Korrektur wird übernommen …";
+
+  try {
+    await saveCurrentReviewTranscript(
+      reviewCorrectionProposedText,
+      reviewCorrectionInstructionText
+        ? `Gesprochene Korrektur: ${reviewCorrectionInstructionText}`
+        : "Gesprochene Korrektur"
+    );
+
+    reviewCorrectionPreview.classList.add("hidden");
+    reviewCorrectionStatus.textContent = "✓ Korrektur übernommen";
+    reviewCorrectionProposedText = "";
+    reviewCorrectionInstructionText = "";
+  } catch (error) {
+    console.error(error);
+    reviewCorrectionStatus.textContent = error.message;
+  } finally {
+    applyReviewCorrectionButton.disabled = false;
+    repeatReviewCorrectionButton.disabled = false;
+    cancelReviewCorrectionButton.disabled = false;
+  }
+}
+
+async function saveReviewTranscriptEdit() {
+  const text = reviewTranscriptTextarea.value.trim();
+
+  if (!text) {
+    reviewCorrectionStatus.textContent =
+      "Der korrigierte Text darf nicht leer sein.";
+    return;
+  }
+
+  saveReviewTranscriptButton.disabled = true;
+  reviewCorrectionStatus.textContent =
+    "Korrektur wird gespeichert …";
+
+  try {
+    await saveCurrentReviewTranscript(
+      text,
+      "Text direkt nach der Transkription korrigiert"
+    );
+
+    reviewTranscriptEditPanel.classList.add("hidden");
+    reviewCorrectionStatus.textContent = "✓ Korrektur übernommen";
+  } catch (error) {
+    console.error(error);
+    reviewCorrectionStatus.textContent = error.message;
+  } finally {
+    saveReviewTranscriptButton.disabled = false;
   }
 }
 
@@ -2226,6 +2645,23 @@ recordButton.onclick =
       await stopRecording();
     }
   };
+
+speakCorrectionButton.onclick = toggleReviewCorrectionRecording;
+editReviewTranscriptButton.onclick = openReviewTranscriptEditor;
+applyReviewCorrectionButton.onclick = applyReviewCorrection;
+repeatReviewCorrectionButton.onclick = async () => {
+  reviewCorrectionPreview.classList.add("hidden");
+  await toggleReviewCorrectionRecording();
+};
+cancelReviewCorrectionButton.onclick = () => {
+  reviewCorrectionPreview.classList.add("hidden");
+  reviewCorrectionStatus.textContent = "";
+};
+saveReviewTranscriptButton.onclick = saveReviewTranscriptEdit;
+cancelReviewTranscriptButton.onclick = () => {
+  reviewTranscriptEditPanel.classList.add("hidden");
+  reviewCorrectionStatus.textContent = "";
+};
 
 confirmButton.addEventListener(
   "click",
