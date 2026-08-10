@@ -716,6 +716,11 @@ async function createEmptyAnswer() {
 }
 
 async function handleFinishedRecording() {
+  const perfStart = performance.now();
+  let uploadStartedAt = null;
+  let transcribeStartedAt = null;
+  let analyzeStartedAt = null;
+
   try {
     showScreen(processingScreen);
     processingText.textContent =
@@ -756,6 +761,8 @@ async function handleFinishedRecording() {
       `aufnahme.${recordingExtension}`
     );
 
+    uploadStartedAt = performance.now();
+
     const uploadResponse =
       await apiFetch(
         "/audio/upload",
@@ -775,8 +782,14 @@ async function handleFinishedRecording() {
       );
     }
 
+    console.info(
+      `[Roman] Audio-Upload: ${((performance.now() - uploadStartedAt) / 1000).toFixed(1)} s`
+    );
+
     processingText.textContent =
       "Ich schreibe deine Worte auf …";
+
+    transcribeStartedAt = performance.now();
 
     const transcribeResponse =
       await apiFetch(
@@ -796,12 +809,32 @@ async function handleFinishedRecording() {
       );
     }
 
+    console.info(
+      `[Roman] Transkription: ${((performance.now() - transcribeStartedAt) / 1000).toFixed(1)} s`
+    );
+
     transcriptElement.textContent =
       transcribeData.transcript ||
       "(Kein Text erkannt.)";
 
-    processingText.textContent =
-      "Ich ordne die Erinnerung behutsam ein …";
+    /*
+     * Ab hier muss Roman nicht mehr auf dem Ladebildschirm warten:
+     * Das Transkript ist bereits da und wird sofort gezeigt.
+     * Die tiefere Einordnung läuft sichtbar weiter.
+     */
+    summaryElement.textContent =
+      "Die Erinnerung wird noch eingeordnet …";
+
+    confirmButton.disabled = true;
+    confirmButton.textContent =
+      "Einordnung läuft …";
+
+    retryButton.disabled = true;
+    discardButton.disabled = true;
+
+    showScreen(reviewScreen);
+
+    analyzeStartedAt = performance.now();
 
     const analyzeResponse =
       await apiFetch(
@@ -820,6 +853,10 @@ async function handleFinishedRecording() {
         "Erinnerung konnte nicht ausgewertet werden."
       );
     }
+
+    console.info(
+      `[Roman] Analyse: ${((performance.now() - analyzeStartedAt) / 1000).toFixed(1)} s`
+    );
 
     summaryElement.textContent =
       analyzeData.memory?.summary ||
@@ -854,9 +891,42 @@ async function handleFinishedRecording() {
       analyzeData.timeline_confidence ||
       "unknown";
 
-    showScreen(reviewScreen);
+    confirmButton.disabled = false;
+    confirmButton.textContent =
+      "So speichern";
+
+    retryButton.disabled = false;
+    discardButton.disabled = false;
+
+    console.info(
+      `[Roman] Gesamt bis Auswertung: ${((performance.now() - perfStart) / 1000).toFixed(1)} s`
+    );
   } catch (error) {
     console.error(error);
+
+    /*
+     * Falls das Transkript schon sichtbar ist, bleiben wir dort.
+     * So geht die Aufnahme nicht optisch "verloren", nur weil die
+     * nachgelagerte KI-Einordnung einmal scheitert.
+     */
+    if (
+      currentAnswerId &&
+      transcriptElement.textContent &&
+      transcriptElement.textContent !== "(Kein Text erkannt.)"
+    ) {
+      summaryElement.textContent =
+        "Die Einordnung konnte gerade nicht abgeschlossen werden. Die Aufnahme und das Transkript sind bereits gespeichert.";
+
+      confirmButton.disabled = false;
+      confirmButton.textContent =
+        "So speichern";
+
+      retryButton.disabled = false;
+      discardButton.disabled = false;
+
+      showScreen(reviewScreen);
+      return;
+    }
 
     showScreen(storyScreen);
 
