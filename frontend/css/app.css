@@ -449,6 +449,57 @@ button:focus-visible,input:focus-visible,select:focus-visible{
 .correction-primary.recording-inline{
   box-shadow:0 0 0 3px rgba(228,181,92,.11),0 0 28px rgba(228,181,92,.16)
 }
+
+.review-correction-feedback{
+  margin-top:14px;
+  padding:14px 14px 12px;
+  border:1px solid rgba(217,155,62,.22);
+  border-radius:14px;
+  background:rgba(0,0,0,.22);
+  text-align:center
+}
+.correction-listening{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:8px;
+  color:var(--cream);
+  font-size:.92rem
+}
+.recording-dot{
+  width:10px;
+  height:10px;
+  border-radius:50%;
+  background:#b94b3f;
+  box-shadow:0 0 0 0 rgba(185,75,63,.5);
+  animation:correctionPulse 1.25s infinite
+}
+@keyframes correctionPulse{
+  0%{box-shadow:0 0 0 0 rgba(185,75,63,.5)}
+  70%{box-shadow:0 0 0 9px rgba(185,75,63,0)}
+  100%{box-shadow:0 0 0 0 rgba(185,75,63,0)}
+}
+#reviewCorrectionTime{
+  margin-top:6px;
+  color:var(--cream-soft);
+  font-family:Arial,sans-serif;
+  font-size:.83rem;
+  font-variant-numeric:tabular-nums
+}
+#reviewCorrectionAudioMeter{
+  display:block;
+  width:100%;
+  max-width:600px;
+  height:72px;
+  margin:6px auto 0
+}
+.correction-recording-hint{
+  margin-top:3px;
+  color:var(--cream-soft);
+  font-size:.78rem;
+  line-height:1.4
+}
+
 .review-correction-status{
   min-height:24px;
   margin-top:10px;

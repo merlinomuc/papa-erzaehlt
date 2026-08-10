@@ -167,6 +167,13 @@
             <button id="editReviewTranscriptButton" class="text-button">Text selbst bearbeiten</button>
           </div>
 
+          <div id="reviewCorrectionFeedback" class="review-correction-feedback hidden" aria-live="polite">
+            <div class="correction-listening"><span class="recording-dot"></span> Ich höre deine Korrektur …</div>
+            <div id="reviewCorrectionTime">00:00</div>
+            <canvas id="reviewCorrectionAudioMeter" width="600" height="90" aria-label="Live-Anzeige der Mikrofonlautstärke"></canvas>
+            <div class="correction-recording-hint">Sprich die Korrektur und tippe danach auf „Aufnahme beenden“.</div>
+          </div>
+
           <div id="reviewCorrectionStatus" class="review-correction-status"></div>
 
           <div id="reviewCorrectionPreview" class="review-correction-preview hidden">

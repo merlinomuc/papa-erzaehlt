@@ -63,6 +63,12 @@ let reviewCorrectionMimeType = "";
 let reviewCorrectionExtension = "webm";
 let reviewCorrectionProposedText = "";
 let reviewCorrectionInstructionText = "";
+let reviewCorrectionAudioContext = null;
+let reviewCorrectionAnalyser = null;
+let reviewCorrectionAnalyserData = null;
+let reviewCorrectionMeterAnimationId = null;
+let reviewCorrectionTimerInterval = null;
+let reviewCorrectionRecordingStartedAt = null;
 let currentAnalysisRunning = false;
 
 const startupView = document.getElementById("startupView");
@@ -131,6 +137,9 @@ const discardButton = document.getElementById("discardButton");
 const speakCorrectionButton = document.getElementById("speakCorrectionButton");
 const editReviewTranscriptButton = document.getElementById("editReviewTranscriptButton");
 const reviewCorrectionStatus = document.getElementById("reviewCorrectionStatus");
+const reviewCorrectionFeedback = document.getElementById("reviewCorrectionFeedback");
+const reviewCorrectionTime = document.getElementById("reviewCorrectionTime");
+const reviewCorrectionAudioMeter = document.getElementById("reviewCorrectionAudioMeter");
 const reviewCorrectionPreview = document.getElementById("reviewCorrectionPreview");
 const reviewCorrectionInstruction = document.getElementById("reviewCorrectionInstruction");
 const reviewCorrectionChanges = document.getElementById("reviewCorrectionChanges");
@@ -1052,7 +1061,178 @@ async function discardMemory() {
   }
 }
 
+function startReviewCorrectionAudioFeedback(stream) {
+  reviewCorrectionAudioContext =
+    new (window.AudioContext || window.webkitAudioContext)();
+
+  const source =
+    reviewCorrectionAudioContext.createMediaStreamSource(stream);
+
+  reviewCorrectionAnalyser =
+    reviewCorrectionAudioContext.createAnalyser();
+
+  reviewCorrectionAnalyser.fftSize = 256;
+  reviewCorrectionAnalyser.smoothingTimeConstant = .82;
+
+  source.connect(reviewCorrectionAnalyser);
+
+  reviewCorrectionAnalyserData =
+    new Uint8Array(
+      reviewCorrectionAnalyser.frequencyBinCount
+    );
+
+  reviewCorrectionFeedback.classList.remove("hidden");
+  reviewCorrectionTime.textContent = "00:00";
+  reviewCorrectionRecordingStartedAt = Date.now();
+
+  reviewCorrectionTimerInterval = setInterval(() => {
+    const seconds = Math.floor(
+      (Date.now() - reviewCorrectionRecordingStartedAt) / 1000
+    );
+
+    const minutes = Math.floor(seconds / 60);
+    const rest = seconds % 60;
+
+    reviewCorrectionTime.textContent =
+      String(minutes).padStart(2, "0") +
+      ":" +
+      String(rest).padStart(2, "0");
+  }, 500);
+
+  drawReviewCorrectionAudioMeter();
+}
+
+function drawReviewCorrectionAudioMeter() {
+  if (!reviewCorrectionAnalyser || !reviewCorrectionAudioMeter) return;
+
+  reviewCorrectionAnalyser.getByteFrequencyData(
+    reviewCorrectionAnalyserData
+  );
+
+  const ctx = reviewCorrectionAudioMeter.getContext("2d");
+  const width = reviewCorrectionAudioMeter.width;
+  const height = reviewCorrectionAudioMeter.height;
+
+  ctx.clearRect(0, 0, width, height);
+
+  const bars = 32;
+  const step = Math.max(
+    1,
+    Math.floor(reviewCorrectionAnalyserData.length / bars)
+  );
+  const gap = 5;
+  const barWidth =
+    (width - gap * (bars - 1)) / bars;
+
+  for (let i = 0; i < bars; i++) {
+    const value =
+      reviewCorrectionAnalyserData[i * step] / 255;
+
+    const shaped = Math.pow(value, .75);
+    const wave =
+      .68 +
+      .32 * Math.sin(Date.now() / 300 + i * .52);
+
+    const barHeight = Math.max(
+      4,
+      shaped * height * .82 * wave
+    );
+
+    const x = i * (barWidth + gap);
+    const y = (height - barHeight) / 2;
+    const alpha = .24 + shaped * .76;
+
+    const gradient = ctx.createLinearGradient(
+      0,
+      y,
+      0,
+      y + barHeight
+    );
+
+    gradient.addColorStop(
+      0,
+      `rgba(246,212,135,${alpha})`
+    );
+    gradient.addColorStop(
+      .52,
+      `rgba(214,160,67,${alpha})`
+    );
+    gradient.addColorStop(
+      1,
+      `rgba(135,55,51,${alpha})`
+    );
+
+    ctx.fillStyle = gradient;
+    ctx.beginPath();
+
+    if (ctx.roundRect) {
+      ctx.roundRect(
+        x,
+        y,
+        barWidth,
+        barHeight,
+        4
+      );
+    } else {
+      ctx.rect(
+        x,
+        y,
+        barWidth,
+        barHeight
+      );
+    }
+
+    ctx.fill();
+  }
+
+  reviewCorrectionMeterAnimationId =
+    requestAnimationFrame(
+      drawReviewCorrectionAudioMeter
+    );
+}
+
+async function stopReviewCorrectionAudioFeedback() {
+  if (reviewCorrectionMeterAnimationId) {
+    cancelAnimationFrame(
+      reviewCorrectionMeterAnimationId
+    );
+  }
+
+  reviewCorrectionMeterAnimationId = null;
+  reviewCorrectionAnalyser = null;
+
+  if (reviewCorrectionTimerInterval) {
+    clearInterval(reviewCorrectionTimerInterval);
+  }
+
+  reviewCorrectionTimerInterval = null;
+  reviewCorrectionRecordingStartedAt = null;
+
+  if (reviewCorrectionAudioContext) {
+    try {
+      await reviewCorrectionAudioContext.close();
+    } catch (_) {}
+  }
+
+  reviewCorrectionAudioContext = null;
+
+  if (reviewCorrectionAudioMeter) {
+    const ctx = reviewCorrectionAudioMeter.getContext("2d");
+    ctx.clearRect(
+      0,
+      0,
+      reviewCorrectionAudioMeter.width,
+      reviewCorrectionAudioMeter.height
+    );
+  }
+
+  if (reviewCorrectionFeedback) {
+    reviewCorrectionFeedback.classList.add("hidden");
+  }
+}
+
 function resetReviewCorrectionUI() {
+  stopReviewCorrectionAudioFeedback();
   reviewCorrectionProposedText = "";
   reviewCorrectionInstructionText = "";
 
@@ -1154,8 +1334,9 @@ async function toggleReviewCorrectionRecording() {
 
     reviewCorrectionRecorder.onstop = uploadReviewCorrectionRecording;
     reviewCorrectionRecorder.start();
+    startReviewCorrectionAudioFeedback(reviewCorrectionStream);
 
-    speakCorrectionButton.textContent = "Aufnahme beenden";
+    speakCorrectionButton.textContent = "■ Aufnahme beenden";
     speakCorrectionButton.classList.add("recording-inline");
     reviewCorrectionStatus.textContent =
       "Sag zum Beispiel: „Ich meinte nicht er, sondern sie.“";
@@ -1166,6 +1347,8 @@ async function toggleReviewCorrectionRecording() {
 }
 
 async function uploadReviewCorrectionRecording() {
+  await stopReviewCorrectionAudioFeedback();
+
   if (reviewCorrectionStream) {
     reviewCorrectionStream.getTracks().forEach(track => track.stop());
   }
