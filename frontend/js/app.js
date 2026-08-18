@@ -2899,3 +2899,21 @@ saveTimelineButton.onclick =
   saveTimeline;
 
 initializeAuth();
+
+// ---------------------------------------------------------
+// PWA / INSTALLIERBARE APP
+// ---------------------------------------------------------
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", async () => {
+    try {
+      const registration = await navigator.serviceWorker.register("/sw.js");
+      console.log("PWA Service Worker aktiv:", registration.scope);
+    } catch (error) {
+      console.error("PWA Service Worker konnte nicht registriert werden:", error);
+    }
+  });
+}
+
+window.addEventListener("appinstalled", () => {
+  console.log("Romans Erinnerungen wurde als App installiert.");
+});
