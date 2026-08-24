@@ -1,10 +1,13 @@
 import os
+import io
 import json
 import random
 import re
 import subprocess
 import tempfile
 import unicodedata
+import zipfile
+from xml.sax.saxutils import escape as xml_escape
 from datetime import datetime, timezone
 from uuid import uuid4
 
@@ -19,6 +22,7 @@ from fastapi import (
     Depends,
 )
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import StreamingResponse
 from openai import OpenAI
 from pydantic import BaseModel
 from supabase import create_client, Client
@@ -150,6 +154,16 @@ class SupplementCreate(BaseModel):
 
 class IdentityResolution(BaseModel):
     same_person: bool
+
+
+class MemoirGenerateRequest(BaseModel):
+    profile_id: str
+    mode: str = "complete"
+
+
+class MemoirExportRequest(BaseModel):
+    profile_id: str
+    memoir: dict
 
 
 # =========================================================
@@ -3915,6 +3929,504 @@ def profiles(
 
 
 # =========================================================
+# MEMOIREN / EXPORT-HILFEN
+# =========================================================
+
+def _safe_filename(value: str, fallback="romans-erinnerungen"):
+    value = clean_text(value).lower()
+    value = unicodedata.normalize("NFKD", value)
+    value = "".join(
+        char for char in value
+        if not unicodedata.combining(char)
+    )
+    value = re.sub(r"[^a-z0-9]+", "-", value)
+    value = value.strip("-")
+    return value or fallback
+
+
+def _memory_sort_key(answer: dict):
+    year = answer.get("timeline_year")
+    return (
+        0 if year is not None else 1,
+        year if year is not None else 9999,
+        clean_text(answer.get("answered_at"))
+        or clean_text(answer.get("created_at")),
+    )
+
+
+def collect_memoir_entries(profile_id: str, mode: str):
+    if mode not in ("complete", "share"):
+        raise HTTPException(
+            status_code=400,
+            detail="mode muss 'complete' oder 'share' sein.",
+        )
+
+    result = (
+        supabase
+        .table("answers")
+        .select(
+            "id, profile_id, question_id, original_transcript, "
+            "edited_transcript, visibility, answered_at, created_at, "
+            "timeline_year, timeline_label, timeline_confidence"
+        )
+        .eq("profile_id", profile_id)
+        .execute()
+    )
+
+    answers = result.data or []
+
+    if mode == "share":
+        answers = [
+            row for row in answers
+            if (row.get("visibility") or "all") == "all"
+        ]
+
+    answers.sort(key=_memory_sort_key)
+
+    if not answers:
+        return []
+
+    answer_ids = [row["id"] for row in answers]
+
+    memory_result = (
+        supabase
+        .table("memories")
+        .select("*")
+        .in_("answer_id", answer_ids)
+        .execute()
+    )
+    memory_map = {
+        row["answer_id"]: row
+        for row in (memory_result.data or [])
+    }
+
+    question_ids = list({
+        row.get("question_id")
+        for row in answers
+        if row.get("question_id")
+    })
+    question_map = {}
+    if question_ids:
+        question_result = (
+            supabase
+            .table("questions")
+            .select("id, text, category, source, parent_answer_id")
+            .in_("id", question_ids)
+            .execute()
+        )
+        question_map = {
+            row["id"]: row
+            for row in (question_result.data or [])
+        }
+
+    entries = []
+    for answer in answers:
+        text = get_effective_answer_text(
+            answer,
+            include_supplements=True,
+        )
+        if not clean_text(text):
+            continue
+
+        question = question_map.get(answer.get("question_id"))
+        memory = memory_map.get(answer["id"], {}) or {}
+
+        entries.append({
+            "id": answer["id"],
+            "year": answer.get("timeline_year"),
+            "time_label": answer.get("timeline_label") or "",
+            "time_confidence": answer.get("timeline_confidence") or "unknown",
+            "visibility": answer.get("visibility") or "all",
+            "question": clean_text(question.get("text")) if question else "Freie Erinnerung",
+            "category": clean_text(question.get("category")) if question else "Freie Erinnerung",
+            "summary": clean_text(memory.get("summary")),
+            "topics": memory.get("topics") or [],
+            "places": memory.get("places") or [],
+            "text": text,
+        })
+
+    return entries
+
+
+def _memoir_source_text(entries: list[dict]):
+    blocks = []
+    for index, entry in enumerate(entries, start=1):
+        year = entry.get("year")
+        time_label = clean_text(entry.get("time_label"))
+        when = time_label or (str(year) if year is not None else "Zeit unbekannt")
+        summary = clean_text(entry.get("summary"))
+        text = clean_text(entry.get("text"))
+        # Einzelne Quellen begrenzen, ohne sie semantisch umzuschreiben.
+        if len(text) > 9000:
+            text = text[:9000] + "\n[Quelle hier gekürzt]"
+        blocks.append(
+            f"QUELLE {index} | ID {entry['id']}\n"
+            f"Zeit: {when}\n"
+            f"Frage/Kontext: {entry.get('question') or 'Freie Erinnerung'}\n"
+            f"Kurzfassung: {summary}\n"
+            f"Romans Worte:\n{text}"
+        )
+    return "\n\n".join(blocks)
+
+
+def _draft_memoir_chunk(entries: list[dict], chunk_number: int):
+    prompt = f"""
+Du bist ein behutsamer Biografie-Redakteur. Aus den folgenden Erinnerungen
+von Roman soll ein zusammenhängender, gut lesbarer autobiografischer Entwurf
+entstehen. Dies ist Teil {chunk_number} eines größeren Buches.
+
+WICHTIGE QUELLENREGELN:
+- Verwende ausschließlich Informationen aus den gelieferten Quellen.
+- Erfinde keine Jahreszahlen, Orte, Beziehungen, Gefühle oder Ereignisse.
+- Wenn Roman etwas unsicher erzählt, bewahre diese Unsicherheit.
+- Widersprüche nicht heimlich auflösen.
+- Romans Stimme und Eigenheiten respektieren, aber nicht künstlich imitieren.
+- Wiederholungen vorsichtig zusammenführen, ohne Inhalte zu verlieren.
+- Schreibe Fließtext, keine Frage-Antwort-Liste.
+- Chronologie beachten, soweit sie aus den Quellen hervorgeht.
+- Keine Meta-Kommentare über KI oder Quellen.
+
+Schreibe einen literarisch ruhigen, warmen Abschnitt von ungefähr
+900 bis 1400 Wörtern, der später in ein Gesamtbuch eingearbeitet werden kann.
+
+QUELLEN:
+{_memoir_source_text(entries)}
+"""
+    response = openai_client.responses.create(
+        model="gpt-5-mini",
+        input=prompt,
+    )
+    return clean_text(response.output_text)
+
+
+def generate_memoir_document(profile_id: str, mode: str):
+    entries = collect_memoir_entries(profile_id, mode)
+
+    if not entries:
+        raise HTTPException(
+            status_code=400,
+            detail="Für diese Buchfassung sind noch keine Erinnerungen vorhanden.",
+        )
+
+    # Kleine Archive werden direkt verarbeitet. Große Archive zuerst in
+    # chronologische Teilentwürfe zerlegen, damit der Export auch später
+    # mit sehr vielen Erinnerungen stabil bleibt.
+    drafts = []
+    chunk_size = 24
+    for start in range(0, len(entries), chunk_size):
+        chunk = entries[start:start + chunk_size]
+        drafts.append(
+            _draft_memoir_chunk(
+                chunk,
+                (start // chunk_size) + 1,
+            )
+        )
+
+    draft_text = "\n\n--- TEILENTWURF ---\n\n".join(drafts)
+
+    mode_note = (
+        "Diese Familienfassung darf auch als 'Nur Familie' markierte Erinnerungen enthalten."
+        if mode == "complete"
+        else "Diese Fassung darf ausschließlich Erinnerungen verwenden, die als 'Für alle' markiert sind."
+    )
+
+    prompt = f"""
+Du bist Schlussredakteur für Romans autobiografisches Erinnerungsbuch.
+Aus den folgenden chronologischen Teilentwürfen soll ein geschlossenes Buch
+mit sinnvollen Kapiteln werden.
+
+{mode_note}
+
+ABSOLUTE REGELN:
+- Nichts erfinden oder historisch ergänzen.
+- Keine Fakten aus Allgemeinwissen hinzufügen.
+- Keine Gefühle, Motive oder Beziehungen als Tatsache behaupten, wenn Roman
+  sie nicht erzählt hat.
+- Unsichere Angaben als unsicher belassen.
+- Widersprüche nicht heimlich entscheiden.
+- Wiederholungen reduzieren, aber besondere Formulierungen und wichtige
+  Einzelheiten bewahren.
+- Chronologie ist die Grundordnung; thematische Kapitel sind erlaubt, wenn
+  sie die Chronologie nicht verfälschen.
+- Schreibe warm, erwachsen, klar und würdevoll. Kein Pathos, keine kitschige
+  Überhöhung, keine Frage-Antwort-Form.
+- Einleitung und Schluss dürfen reflektierend sein, aber nur aus Romans
+  tatsächlich erzählten Inhalten schöpfen.
+
+Antworte ausschließlich mit gültigem JSON in diesem Format:
+{{
+  "title": "Romans Erinnerungen",
+  "subtitle": "",
+  "introduction": "",
+  "chapters": [
+    {{"title": "", "period": "", "text": ""}}
+  ],
+  "epilogue": ""
+}}
+
+TEILENTWÜRFE:
+{draft_text}
+"""
+
+    response = openai_client.responses.create(
+        model="gpt-5-mini",
+        input=prompt,
+    )
+
+    memoir = parse_json_response(response.output_text or "")
+    chapters = memoir.get("chapters") or []
+    if not isinstance(chapters, list) or not chapters:
+        memoir["chapters"] = [{
+            "title": "Erinnerungen",
+            "period": "",
+            "text": draft_text,
+        }]
+
+    memoir["title"] = clean_text(memoir.get("title")) or "Romans Erinnerungen"
+    memoir["subtitle"] = clean_text(memoir.get("subtitle"))
+    memoir["introduction"] = clean_text(memoir.get("introduction"))
+    memoir["epilogue"] = clean_text(memoir.get("epilogue"))
+    memoir["mode"] = mode
+    memoir["memory_count"] = len(entries)
+    memoir["family_only_count"] = sum(
+        1 for entry in entries
+        if entry.get("visibility") == "family"
+    )
+    memoir["generated_at"] = utc_now_iso()
+    return memoir
+
+
+def _memoir_plain_text(memoir: dict):
+    parts = [clean_text(memoir.get("title")) or "Romans Erinnerungen"]
+    subtitle = clean_text(memoir.get("subtitle"))
+    if subtitle:
+        parts.append(subtitle)
+    intro = clean_text(memoir.get("introduction"))
+    if intro:
+        parts.append(intro)
+    for chapter in memoir.get("chapters") or []:
+        title = clean_text(chapter.get("title")) or "Kapitel"
+        period = clean_text(chapter.get("period"))
+        heading = title + (f" ({period})" if period else "")
+        parts.append(heading)
+        parts.append(clean_text(chapter.get("text")))
+    epilogue = clean_text(memoir.get("epilogue"))
+    if epilogue:
+        parts.append("Ausklang")
+        parts.append(epilogue)
+    return "\n\n".join(part for part in parts if part)
+
+
+def build_memoir_pdf(memoir: dict):
+    try:
+        from reportlab.lib.pagesizes import A5
+        from reportlab.lib import colors
+        from reportlab.lib.enums import TA_CENTER
+        from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+        from reportlab.lib.units import mm
+        from reportlab.platypus import (
+            SimpleDocTemplate,
+            Paragraph,
+            Spacer,
+            PageBreak,
+        )
+    except Exception as exc:
+        raise HTTPException(
+            status_code=500,
+            detail="PDF-Unterstützung ist auf dem Server noch nicht installiert.",
+        ) from exc
+
+    buffer = io.BytesIO()
+    styles = getSampleStyleSheet()
+    styles.add(ParagraphStyle(
+        name="MemoirTitle",
+        parent=styles["Title"],
+        fontName="Times-Bold",
+        fontSize=28,
+        leading=34,
+        alignment=TA_CENTER,
+        textColor=colors.HexColor("#4B2F20"),
+        spaceAfter=12,
+    ))
+    styles.add(ParagraphStyle(
+        name="MemoirSubtitle",
+        parent=styles["Normal"],
+        fontName="Times-Italic",
+        fontSize=13,
+        leading=18,
+        alignment=TA_CENTER,
+        textColor=colors.HexColor("#725B45"),
+    ))
+    styles.add(ParagraphStyle(
+        name="MemoirChapter",
+        parent=styles["Heading1"],
+        fontName="Times-Bold",
+        fontSize=20,
+        leading=25,
+        textColor=colors.HexColor("#4B2F20"),
+        spaceAfter=8,
+    ))
+    styles.add(ParagraphStyle(
+        name="MemoirPeriod",
+        parent=styles["Normal"],
+        fontName="Times-Italic",
+        fontSize=10.5,
+        leading=14,
+        textColor=colors.HexColor("#8A6B45"),
+        spaceAfter=12,
+    ))
+    styles.add(ParagraphStyle(
+        name="MemoirBody",
+        parent=styles["BodyText"],
+        fontName="Times-Roman",
+        fontSize=11.2,
+        leading=17.2,
+        textColor=colors.HexColor("#201A16"),
+        spaceAfter=8,
+    ))
+
+    doc = SimpleDocTemplate(
+        buffer,
+        pagesize=A5,
+        leftMargin=18 * mm,
+        rightMargin=18 * mm,
+        topMargin=20 * mm,
+        bottomMargin=19 * mm,
+        title=clean_text(memoir.get("title")) or "Romans Erinnerungen",
+        author="Roman",
+    )
+
+    def footer(canvas, document):
+        canvas.saveState()
+        canvas.setStrokeColor(colors.HexColor("#D7C9AF"))
+        canvas.line(18 * mm, 13 * mm, A5[0] - 18 * mm, 13 * mm)
+        canvas.setFont("Times-Roman", 8.5)
+        canvas.setFillColor(colors.HexColor("#7D6D5F"))
+        canvas.drawCentredString(A5[0] / 2, 9.5 * mm, str(document.page))
+        canvas.restoreState()
+
+    story = [Spacer(1, 42 * mm)]
+    story.append(Paragraph(xml_escape(clean_text(memoir.get("title")) or "Romans Erinnerungen"), styles["MemoirTitle"]))
+    subtitle = clean_text(memoir.get("subtitle"))
+    if subtitle:
+        story.append(Paragraph(xml_escape(subtitle), styles["MemoirSubtitle"]))
+    story.append(Spacer(1, 18 * mm))
+    label = "Familienfassung" if memoir.get("mode") == "complete" else "Version zum Teilen"
+    story.append(Paragraph(xml_escape(label), styles["MemoirSubtitle"]))
+    story.append(PageBreak())
+
+    intro = clean_text(memoir.get("introduction"))
+    if intro:
+        story.append(Paragraph("Einleitung", styles["MemoirChapter"]))
+        for para in re.split(r"\n\s*\n", intro):
+            if clean_text(para):
+                story.append(Paragraph(xml_escape(clean_text(para)), styles["MemoirBody"]))
+        story.append(PageBreak())
+
+    for index, chapter in enumerate(memoir.get("chapters") or [], start=1):
+        title = clean_text(chapter.get("title")) or f"Kapitel {index}"
+        story.append(Paragraph(xml_escape(title), styles["MemoirChapter"]))
+        period = clean_text(chapter.get("period"))
+        if period:
+            story.append(Paragraph(xml_escape(period), styles["MemoirPeriod"]))
+        for para in re.split(r"\n\s*\n", clean_text(chapter.get("text"))):
+            if clean_text(para):
+                story.append(Paragraph(xml_escape(clean_text(para)), styles["MemoirBody"]))
+        if index < len(memoir.get("chapters") or []):
+            story.append(PageBreak())
+
+    epilogue = clean_text(memoir.get("epilogue"))
+    if epilogue:
+        story.append(PageBreak())
+        story.append(Paragraph("Ausklang", styles["MemoirChapter"]))
+        for para in re.split(r"\n\s*\n", epilogue):
+            if clean_text(para):
+                story.append(Paragraph(xml_escape(clean_text(para)), styles["MemoirBody"]))
+
+    doc.build(story, onFirstPage=footer, onLaterPages=footer)
+    buffer.seek(0)
+    return buffer
+
+
+def build_memoir_docx(memoir: dict):
+    try:
+        from docx import Document
+        from docx.enum.text import WD_ALIGN_PARAGRAPH
+        from docx.shared import Pt, Mm
+    except Exception as exc:
+        raise HTTPException(
+            status_code=500,
+            detail="Word-Unterstützung ist auf dem Server noch nicht installiert.",
+        ) from exc
+
+    doc = Document()
+    section = doc.sections[0]
+    section.top_margin = Mm(22)
+    section.bottom_margin = Mm(22)
+    section.left_margin = Mm(24)
+    section.right_margin = Mm(24)
+
+    normal = doc.styles["Normal"]
+    normal.font.name = "Times New Roman"
+    normal.font.size = Pt(11.5)
+
+    title = doc.add_paragraph()
+    title.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    run = title.add_run(clean_text(memoir.get("title")) or "Romans Erinnerungen")
+    run.bold = True
+    run.font.name = "Times New Roman"
+    run.font.size = Pt(26)
+
+    subtitle = clean_text(memoir.get("subtitle"))
+    if subtitle:
+        p = doc.add_paragraph()
+        p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        r = p.add_run(subtitle)
+        r.italic = True
+        r.font.size = Pt(13)
+
+    label = "Familienfassung" if memoir.get("mode") == "complete" else "Version zum Teilen"
+    p = doc.add_paragraph()
+    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    p.add_run(label).italic = True
+    doc.add_page_break()
+
+    intro = clean_text(memoir.get("introduction"))
+    if intro:
+        doc.add_heading("Einleitung", level=1)
+        for para in re.split(r"\n\s*\n", intro):
+            if clean_text(para):
+                doc.add_paragraph(clean_text(para))
+        doc.add_page_break()
+
+    chapters = memoir.get("chapters") or []
+    for index, chapter in enumerate(chapters, start=1):
+        doc.add_heading(clean_text(chapter.get("title")) or f"Kapitel {index}", level=1)
+        period = clean_text(chapter.get("period"))
+        if period:
+            p = doc.add_paragraph()
+            p.add_run(period).italic = True
+        for para in re.split(r"\n\s*\n", clean_text(chapter.get("text"))):
+            if clean_text(para):
+                doc.add_paragraph(clean_text(para))
+        if index < len(chapters):
+            doc.add_page_break()
+
+    epilogue = clean_text(memoir.get("epilogue"))
+    if epilogue:
+        doc.add_page_break()
+        doc.add_heading("Ausklang", level=1)
+        for para in re.split(r"\n\s*\n", epilogue):
+            if clean_text(para):
+                doc.add_paragraph(clean_text(para))
+
+    buffer = io.BytesIO()
+    doc.save(buffer)
+    buffer.seek(0)
+    return buffer
+
+
+# =========================================================
 # ARCHIV
 # =========================================================
 
@@ -4228,6 +4740,231 @@ def archive(
     return {
         "items": items
     }
+
+
+# =========================================================
+# MEMOIREN / EXPORT
+# =========================================================
+
+@app.get("/memoir/stats")
+def memoir_stats(
+    profile_id: str,
+    current_user=Depends(get_current_app_user),
+):
+    authorize_read_profile(current_user, profile_id)
+
+    result = (
+        supabase
+        .table("answers")
+        .select("id, visibility")
+        .eq("profile_id", profile_id)
+        .execute()
+    )
+    rows = result.data or []
+    family = sum(
+        1 for row in rows
+        if (row.get("visibility") or "all") == "family"
+    )
+    return {
+        "total": len(rows),
+        "family_only": family,
+        "shareable": len(rows) - family,
+    }
+
+
+@app.post("/memoir/generate")
+def memoir_generate(
+    payload: MemoirGenerateRequest,
+    current_user=Depends(get_current_app_user),
+):
+    authorize_read_profile(current_user, payload.profile_id)
+    return generate_memoir_document(
+        payload.profile_id,
+        payload.mode,
+    )
+
+
+@app.post("/memoir/export/pdf")
+def memoir_export_pdf(
+    payload: MemoirExportRequest,
+    current_user=Depends(get_current_app_user),
+):
+    authorize_read_profile(current_user, payload.profile_id)
+    memoir = payload.memoir or {}
+    pdf = build_memoir_pdf(memoir)
+    suffix = "familienfassung" if memoir.get("mode") == "complete" else "zum-teilen"
+    filename = f"romans-erinnerungen-{suffix}.pdf"
+    return StreamingResponse(
+        pdf,
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition": f'attachment; filename="{filename}"'
+        },
+    )
+
+
+@app.post("/memoir/export/docx")
+def memoir_export_docx(
+    payload: MemoirExportRequest,
+    current_user=Depends(get_current_app_user),
+):
+    authorize_read_profile(current_user, payload.profile_id)
+    memoir = payload.memoir or {}
+    docx = build_memoir_docx(memoir)
+    suffix = "familienfassung" if memoir.get("mode") == "complete" else "zum-teilen"
+    filename = f"romans-erinnerungen-{suffix}.docx"
+    return StreamingResponse(
+        docx,
+        media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        headers={
+            "Content-Disposition": f'attachment; filename="{filename}"'
+        },
+    )
+
+
+@app.get("/answer/{answer_id}/audio")
+def download_answer_audio(
+    answer_id: str,
+    current_user=Depends(get_current_app_user),
+):
+    answer = get_answer_or_404(answer_id)
+    authorize_read_profile(current_user, answer["profile_id"])
+    audio_path = clean_text(answer.get("audio_path"))
+    if not audio_path:
+        raise HTTPException(status_code=404, detail="Keine Originalaufnahme vorhanden.")
+
+    try:
+        content = (
+            supabase.storage
+            .from_("memories-audio")
+            .download(audio_path)
+        )
+    except Exception as exc:
+        raise HTTPException(
+            status_code=500,
+            detail="Originalaufnahme konnte nicht geladen werden.",
+        ) from exc
+
+    extension = audio_path.rsplit(".", 1)[-1].lower() if "." in audio_path else "webm"
+    media_types = {
+        "webm": "audio/webm",
+        "wav": "audio/wav",
+        "mp3": "audio/mpeg",
+        "m4a": "audio/mp4",
+        "ogg": "audio/ogg",
+    }
+    return StreamingResponse(
+        io.BytesIO(content),
+        media_type=media_types.get(extension, "application/octet-stream"),
+        headers={
+            "Content-Disposition": f'attachment; filename="roman-original-{answer_id}.{extension}"'
+        },
+    )
+
+
+@app.get("/export/archive")
+def export_archive(
+    profile_id: str,
+    current_user=Depends(get_current_app_user),
+):
+    authorize_read_profile(current_user, profile_id)
+
+    archive_data = archive(profile_id, current_user)
+    answers_result = (
+        supabase
+        .table("answers")
+        .select("id, audio_path")
+        .eq("profile_id", profile_id)
+        .execute()
+    )
+    answers = answers_result.data or []
+    answer_ids = [row["id"] for row in answers]
+
+    supplements = []
+    if answer_ids:
+        supplements_result = (
+            supabase
+            .table("answer_supplements")
+            .select("id, answer_id, transcript, audio_path, supplement_type, created_at")
+            .in_("answer_id", answer_ids)
+            .execute()
+        )
+        supplements = supplements_result.data or []
+
+    people_result = (
+        supabase
+        .table("people")
+        .select("*")
+        .eq("profile_id", profile_id)
+        .execute()
+    )
+
+    payload = {
+        "exported_at": utc_now_iso(),
+        "profile_id": profile_id,
+        "memories": archive_data.get("items", []),
+        "people": people_result.data or [],
+        "supplements": supplements,
+    }
+
+    buffer = io.BytesIO()
+    with zipfile.ZipFile(buffer, "w", zipfile.ZIP_DEFLATED) as zf:
+        zf.writestr(
+            "erinnerungen.json",
+            json.dumps(payload, ensure_ascii=False, indent=2, default=str),
+        )
+        text_blocks = []
+        for item in archive_data.get("items", []):
+            title = (
+                clean_text((item.get("question") or {}).get("text"))
+                or clean_text((item.get("memory") or {}).get("summary"))
+                or "Freie Erinnerung"
+            )
+            when = clean_text(item.get("timeline_label")) or clean_text(item.get("timeline_year")) or "Zeit unbekannt"
+            text_blocks.append(
+                f"{title}\n{when}\n\n{clean_text(item.get('transcript'))}\n\n"
+                + ("=" * 72)
+            )
+        zf.writestr("erinnerungen.txt", "\n\n".join(text_blocks))
+
+        audio_sources = []
+        for row in answers:
+            if row.get("audio_path"):
+                audio_sources.append((
+                    f"audio/original-{row['id']}-{PathLikeName(row['audio_path'])}",
+                    row["audio_path"],
+                ))
+        for supplement in supplements:
+            if supplement.get("audio_path"):
+                audio_sources.append((
+                    f"audio/ergaenzung-{supplement['id']}-{PathLikeName(supplement['audio_path'])}",
+                    supplement["audio_path"],
+                ))
+
+        for zip_name, storage_path in audio_sources:
+            try:
+                content = (
+                    supabase.storage
+                    .from_("memories-audio")
+                    .download(storage_path)
+                )
+                zf.writestr(zip_name, content)
+            except Exception as exc:
+                print("BACKUP AUDIO ERROR:", storage_path, exc)
+
+    buffer.seek(0)
+    filename = f"romans-archiv-{datetime.now().date().isoformat()}.zip"
+    return StreamingResponse(
+        buffer,
+        media_type="application/zip",
+        headers={
+            "Content-Disposition": f'attachment; filename="{filename}"'
+        },
+    )
+
+
+def PathLikeName(path_value: str):
+    return clean_text(path_value).replace("\\", "/").rsplit("/", 1)[-1] or "audio"
 
 
 # =========================================================

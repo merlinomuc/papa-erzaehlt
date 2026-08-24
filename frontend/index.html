@@ -310,6 +310,92 @@
       <div class="wax-seal">R</div>
     </section>
 
+    <!-- Mein Buch / Export -->
+    <section id="settingsScreen" class="screen dark-book-screen">
+      <header class="inner-header">
+        <button id="settingsBackButton" class="back-button" aria-label="Zurück">‹</button>
+        <div class="inner-monogram">R</div>
+        <div class="inner-heading">
+          <div class="inner-kicker">Romans Erinnerungen</div>
+          <div>Mein Buch</div>
+        </div>
+      </header>
+
+      <div class="ornament-line"><span>❦</span></div>
+
+      <div class="settings-content">
+        <h1>Aus Erinnerungen wird ein Buch</h1>
+        <p class="settings-intro">
+          Hier kannst du aus den gespeicherten Erinnerungen einen zusammenhängenden
+          Buchentwurf mit Kapiteln erstellen. Du siehst zuerst eine Vorschau.
+        </p>
+
+        <div id="memoirStats" class="memoir-stats">
+          Erinnerungen werden gezählt …
+        </div>
+
+        <div class="memoir-choice-grid">
+          <article class="memoir-choice-card">
+            <div class="eyebrow">Familienfassung</div>
+            <h2>Komplette Memoiren</h2>
+            <p>
+              Verwendet alle gespeicherten Erinnerungen – auch solche, die als
+              „Nur Familie“ markiert sind.
+            </p>
+            <button id="generateCompleteMemoirButton" class="gold-button">
+              Familienfassung erstellen
+            </button>
+          </article>
+
+          <article class="memoir-choice-card">
+            <div class="eyebrow">Zum Weitergeben</div>
+            <h2>Version zum Teilen</h2>
+            <p>
+              Verwendet nur Erinnerungen, die als „Für alle“ freigegeben sind.
+              Familieninterne Erinnerungen bleiben draußen.
+            </p>
+            <button id="generateShareMemoirButton" class="outline-button">
+              Teilbare Fassung erstellen
+            </button>
+          </article>
+        </div>
+
+        <div id="memoirStatus" class="memoir-status" aria-live="polite"></div>
+
+        <section id="memoirPreview" class="memoir-preview hidden">
+          <div class="eyebrow">Buchvorschau</div>
+          <h2 id="memoirPreviewTitle"></h2>
+          <div id="memoirPreviewMeta" class="memoir-preview-meta"></div>
+          <div id="memoirPreviewIntro" class="memoir-preview-intro"></div>
+          <div id="memoirChapterList" class="memoir-chapter-list"></div>
+          <div id="memoirPreviewEpilogue" class="memoir-preview-epilogue"></div>
+
+          <div class="memoir-export-actions">
+            <button id="memoirPdfButton" class="gold-button">Als PDF herunterladen</button>
+            <button id="memoirDocxButton" class="outline-button">Als Word-Datei herunterladen</button>
+          </div>
+        </section>
+
+        <section class="archive-backup-card">
+          <div class="eyebrow">Sicherung</div>
+          <h2>Komplettes Erinnerungsarchiv</h2>
+          <p>
+            Erstellt eine ZIP-Sicherung mit Erinnerungen, Personenangaben und
+            vorhandenen Originalaufnahmen.
+          </p>
+          <button id="archiveBackupButton" class="outline-button">
+            Archiv als ZIP sichern
+          </button>
+          <div id="archiveBackupStatus" class="memoir-status"></div>
+        </section>
+      </div>
+
+      <div class="gold-pages"></div>
+      <div class="book-ribbon"></div>
+      <div class="wax-seal">R</div>
+    </section>
+
+    <button id="settingsButton" class="settings-button">Mein Buch</button>
     <button id="logoutButton" class="logout-button">Abmelden</button>
   </main>
 

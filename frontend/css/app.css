@@ -610,3 +610,51 @@ button:focus-visible,input:focus-visible,select:focus-visible{
   color:var(--cream);
   line-height:1.6
 }
+
+
+/* Mein Buch / Export */
+.settings-button{
+  position:fixed;left:12px;bottom:12px;z-index:50;padding:8px 12px;border-radius:999px;
+  border:1px solid rgba(217,155,62,.28);color:#c9a774;background:rgba(0,0,0,.62);
+  font-family:Arial,sans-serif;font-size:.68rem;letter-spacing:.02em
+}
+.settings-button:hover{color:var(--gold-light);border-color:rgba(217,155,62,.5)}
+.settings-content{position:relative;z-index:4;max-width:480px;margin:0 auto}
+.settings-content>h1{margin:14px 0 10px;text-align:center;color:var(--gold-light);font-weight:normal;font-size:clamp(2rem,8vw,2.7rem);line-height:1.18}
+.settings-intro{text-align:center;color:var(--cream-soft);font-style:italic;line-height:1.65;margin-bottom:22px}
+.memoir-stats{
+  margin:0 0 18px;padding:14px 16px;border:1px solid rgba(217,155,62,.22);border-radius:14px;
+  color:#e5c994;background:rgba(0,0,0,.2);text-align:center;line-height:1.55
+}
+.memoir-choice-grid{display:grid;gap:14px}
+.memoir-choice-card,.archive-backup-card{
+  padding:20px 18px;border:1px solid rgba(217,155,62,.24);border-radius:18px;
+  background:linear-gradient(145deg,rgba(58,35,18,.25),rgba(0,0,0,.2));
+  box-shadow:inset 0 0 35px rgba(0,0,0,.18)
+}
+.memoir-choice-card h2,.archive-backup-card h2,.memoir-preview h2{
+  margin:9px 0 8px;color:#e8ca93;font-weight:normal;font-size:1.45rem;line-height:1.25
+}
+.memoir-choice-card p,.archive-backup-card p{
+  color:var(--cream-soft);line-height:1.6;margin:0 0 16px
+}
+.memoir-status{min-height:24px;margin:14px 0;color:var(--cream-soft);text-align:center;line-height:1.5}
+.memoir-preview{
+  margin-top:22px;padding:22px 18px;border:1px solid rgba(217,155,62,.34);border-radius:18px;
+  background:rgba(0,0,0,.24)
+}
+.memoir-preview>h2{text-align:center;font-size:1.8rem}
+.memoir-preview-meta{text-align:center;color:var(--gold-mid);font-size:.86rem;margin-bottom:18px}
+.memoir-preview-intro,.memoir-preview-epilogue{color:var(--cream-soft);font-style:italic;line-height:1.7;white-space:pre-wrap;margin:15px 0}
+.memoir-chapter-list{display:grid;gap:10px;margin:18px 0}
+.memoir-chapter{
+  padding:14px 15px;border-left:2px solid rgba(217,155,62,.55);background:rgba(255,255,255,.018)
+}
+.memoir-chapter-title{color:#e6c58b;font-size:1.08rem;margin-bottom:3px}
+.memoir-chapter-period{color:#a88a61;font-size:.82rem;font-style:italic}
+.memoir-chapter-excerpt{margin-top:7px;color:var(--cream-soft);line-height:1.55;font-size:.92rem}
+.memoir-export-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:18px}
+.archive-backup-card{margin-top:22px}
+@media(max-width:430px){.memoir-export-actions{grid-template-columns:1fr}}
+
+.original-audio-player{width:100%;margin-top:14px;accent-color:#c58a32}

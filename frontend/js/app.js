@@ -35,6 +35,8 @@ let currentTimelineConfidence = "unknown";
 
 let archiveItems = [];
 let openedMemoryId = null;
+let currentMemoir = null;
+let currentAudioObjectUrl = null;
 
 let mediaRecorder = null;
 let mediaStream = null;
@@ -82,6 +84,7 @@ const reviewScreen = document.getElementById("reviewScreen");
 const savedScreen = document.getElementById("savedScreen");
 const memoriesScreen = document.getElementById("memoriesScreen");
 const timelineScreen = document.getElementById("timelineScreen");
+const settingsScreen = document.getElementById("settingsScreen");
 
 const screens = [
   homeScreen,
@@ -90,7 +93,8 @@ const screens = [
   reviewScreen,
   savedScreen,
   memoriesScreen,
-  timelineScreen
+  timelineScreen,
+  settingsScreen
 ];
 
 const emailInput = document.getElementById("email");
@@ -98,6 +102,22 @@ const passwordInput = document.getElementById("password");
 const loginButton = document.getElementById("loginButton");
 const loginMessage = document.getElementById("loginMessage");
 const logoutButton = document.getElementById("logoutButton");
+const settingsButton = document.getElementById("settingsButton");
+const settingsBackButton = document.getElementById("settingsBackButton");
+const memoirStats = document.getElementById("memoirStats");
+const generateCompleteMemoirButton = document.getElementById("generateCompleteMemoirButton");
+const generateShareMemoirButton = document.getElementById("generateShareMemoirButton");
+const memoirStatus = document.getElementById("memoirStatus");
+const memoirPreview = document.getElementById("memoirPreview");
+const memoirPreviewTitle = document.getElementById("memoirPreviewTitle");
+const memoirPreviewMeta = document.getElementById("memoirPreviewMeta");
+const memoirPreviewIntro = document.getElementById("memoirPreviewIntro");
+const memoirChapterList = document.getElementById("memoirChapterList");
+const memoirPreviewEpilogue = document.getElementById("memoirPreviewEpilogue");
+const memoirPdfButton = document.getElementById("memoirPdfButton");
+const memoirDocxButton = document.getElementById("memoirDocxButton");
+const archiveBackupButton = document.getElementById("archiveBackupButton");
+const archiveBackupStatus = document.getElementById("archiveBackupStatus");
 
 const homeNavTell = document.getElementById("homeNavTell");
 const homeNavMemories = document.getElementById("homeNavMemories");
@@ -2255,7 +2275,10 @@ function ensureMemoryToolsUI() {
     <div class="memory-tool-actions">
       <button id="editTranscriptButton" class="outline-button">Text korrigieren</button>
       <button id="openSupplementButton" class="outline-button">Etwas ergänzen</button>
+      <button id="playOriginalAudioButton" class="outline-button hidden">Originalaufnahme anhören</button>
+      <button id="downloadOriginalAudioButton" class="outline-button hidden">Originalaufnahme speichern</button>
     </div>
+    <audio id="originalAudioPlayer" class="original-audio-player hidden" controls preload="none"></audio>
 
     <div id="transcriptEditPanel" class="memory-tool-panel hidden">
       <label for="transcriptEditTextarea">Korrigierte Fassung</label>
@@ -2284,6 +2307,9 @@ function ensureMemoryToolsUI() {
 
   editTranscriptButton = document.getElementById("editTranscriptButton");
   const openSupplementButton = document.getElementById("openSupplementButton");
+  const playOriginalAudioButton = document.getElementById("playOriginalAudioButton");
+  const downloadOriginalAudioButton = document.getElementById("downloadOriginalAudioButton");
+  const originalAudioPlayer = document.getElementById("originalAudioPlayer");
   transcriptEditPanel = document.getElementById("transcriptEditPanel");
   transcriptEditTextarea = document.getElementById("transcriptEditTextarea");
   saveTranscriptButton = document.getElementById("saveTranscriptButton");
@@ -2316,6 +2342,48 @@ function ensureMemoryToolsUI() {
 
   cancelTranscriptEditButton.onclick = () => {
     transcriptEditPanel.classList.add("hidden");
+  };
+
+  playOriginalAudioButton.onclick = async () => {
+    if (!openedMemoryId) return;
+    try {
+      playOriginalAudioButton.disabled = true;
+      playOriginalAudioButton.textContent = "Aufnahme wird geladen …";
+      const response = await apiFetch(`/answer/${openedMemoryId}/audio`);
+      if (!response.ok) {
+        let message = "Originalaufnahme konnte nicht geladen werden.";
+        try {
+          const data = await response.json();
+          message = data.detail || message;
+        } catch (_) {}
+        throw new Error(message);
+      }
+      const blob = await response.blob();
+      if (currentAudioObjectUrl) URL.revokeObjectURL(currentAudioObjectUrl);
+      currentAudioObjectUrl = URL.createObjectURL(blob);
+      originalAudioPlayer.src = currentAudioObjectUrl;
+      originalAudioPlayer.classList.remove("hidden");
+      await originalAudioPlayer.play().catch(() => {});
+    } catch (error) {
+      console.error(error);
+      alert(error.message);
+    } finally {
+      playOriginalAudioButton.disabled = false;
+      playOriginalAudioButton.textContent = "Originalaufnahme anhören";
+    }
+  };
+
+  downloadOriginalAudioButton.onclick = async () => {
+    if (!openedMemoryId) return;
+    try {
+      await downloadFromApi(
+        `/answer/${openedMemoryId}/audio`,
+        `roman-original-${openedMemoryId}.webm`
+      );
+    } catch (error) {
+      console.error(error);
+      alert(error.message);
+    }
   };
 
   saveTranscriptButton.onclick = saveTranscriptCorrection;
@@ -2637,6 +2705,17 @@ function openMemory(answerId) {
       ? "none"
       : "block";
 
+  const originalAudioButton = document.getElementById("downloadOriginalAudioButton");
+  const playOriginalAudioButton = document.getElementById("playOriginalAudioButton");
+  const originalAudioPlayer = document.getElementById("originalAudioPlayer");
+  if (originalAudioButton) originalAudioButton.classList.toggle("hidden", !item.has_audio);
+  if (playOriginalAudioButton) playOriginalAudioButton.classList.toggle("hidden", !item.has_audio);
+  if (originalAudioPlayer) {
+    originalAudioPlayer.pause();
+    originalAudioPlayer.removeAttribute("src");
+    originalAudioPlayer.classList.add("hidden");
+  }
+
   transcriptEditPanel.classList.add("hidden");
   supplementPanel.classList.add("hidden");
   supplementStatus.textContent = "";
@@ -2658,6 +2737,11 @@ function closeMemory() {
 
   document.body.style.overflow =
     "";
+
+  if (currentAudioObjectUrl) {
+    URL.revokeObjectURL(currentAudioObjectUrl);
+    currentAudioObjectUrl = null;
+  }
 
   openedMemoryId = null;
 }
@@ -2763,6 +2847,177 @@ async function saveTimeline() {
   }
 }
 
+
+async function loadMemoirStats() {
+  memoirStats.textContent = "Erinnerungen werden gezählt …";
+  try {
+    const response = await apiFetch(
+      `/memoir/stats?profile_id=${currentProfileId}`
+    );
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data.detail || "Die Erinnerungen konnten nicht gezählt werden.");
+    }
+    memoirStats.innerHTML = `
+      <strong>${data.total}</strong> Erinnerungen insgesamt<br>
+      <span>${data.family_only} nur für die Familie · ${data.shareable} für die Version zum Teilen</span>
+    `;
+  } catch (error) {
+    console.error(error);
+    memoirStats.textContent = error.message;
+  }
+}
+
+async function showSettings() {
+  currentMemoir = null;
+  memoirPreview.classList.add("hidden");
+  memoirStatus.textContent = "";
+  archiveBackupStatus.textContent = "";
+  showScreen(settingsScreen);
+  await loadMemoirStats();
+}
+
+function renderMemoirPreview(memoir) {
+  memoirPreviewTitle.textContent = memoir.title || "Romans Erinnerungen";
+  const familyText = memoir.mode === "complete"
+    ? "Familienfassung · enthält auch familieninterne Erinnerungen"
+    : "Version zum Teilen · nur freigegebene Erinnerungen";
+  memoirPreviewMeta.textContent = `${familyText} · ${memoir.memory_count || 0} Erinnerungen`;
+  memoirPreviewIntro.textContent = memoir.introduction || "";
+  memoirChapterList.innerHTML = "";
+
+  for (const chapter of memoir.chapters || []) {
+    const card = document.createElement("article");
+    card.className = "memoir-chapter";
+    const text = String(chapter.text || "").trim();
+    const excerpt = text.length > 330 ? text.slice(0, 330) + " …" : text;
+    card.innerHTML = `
+      <div class="memoir-chapter-title">${escapeHtml(chapter.title || "Kapitel")}</div>
+      ${chapter.period ? `<div class="memoir-chapter-period">${escapeHtml(chapter.period)}</div>` : ""}
+      <div class="memoir-chapter-excerpt">${escapeHtml(excerpt)}</div>
+    `;
+    memoirChapterList.appendChild(card);
+  }
+
+  memoirPreviewEpilogue.textContent = memoir.epilogue || "";
+  memoirPreview.classList.remove("hidden");
+  memoirPreview.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+async function generateMemoir(mode) {
+  const complete = mode === "complete";
+  const button = complete ? generateCompleteMemoirButton : generateShareMemoirButton;
+  const otherButton = complete ? generateShareMemoirButton : generateCompleteMemoirButton;
+  button.disabled = true;
+  otherButton.disabled = true;
+  memoirPreview.classList.add("hidden");
+  currentMemoir = null;
+  memoirStatus.textContent = complete
+    ? "Die komplette Familienfassung wird geschrieben. Das kann einige Minuten dauern …"
+    : "Die Version zum Teilen wird geschrieben. Das kann einige Minuten dauern …";
+
+  try {
+    const response = await apiFetch("/memoir/generate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ profile_id: currentProfileId, mode })
+    });
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data.detail || "Das Buch konnte nicht erstellt werden.");
+    }
+    currentMemoir = data;
+    memoirStatus.textContent = "✓ Buchvorschau ist fertig.";
+    renderMemoirPreview(data);
+  } catch (error) {
+    console.error(error);
+    memoirStatus.textContent = error.message;
+  } finally {
+    button.disabled = false;
+    otherButton.disabled = false;
+  }
+}
+
+function filenameFromDisposition(response, fallback) {
+  const value = response.headers.get("Content-Disposition") || "";
+  const match = value.match(/filename="?([^";]+)"?/i);
+  return match ? match[1] : fallback;
+}
+
+async function saveBlobResponse(response, fallbackFilename) {
+  if (!response.ok) {
+    let message = "Download fehlgeschlagen.";
+    try {
+      const data = await response.json();
+      message = data.detail || message;
+    } catch (_) {}
+    throw new Error(message);
+  }
+  const blob = await response.blob();
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filenameFromDisposition(response, fallbackFilename);
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1500);
+}
+
+async function downloadFromApi(path, fallbackFilename, options = {}) {
+  const response = await apiFetch(path, options);
+  await saveBlobResponse(response, fallbackFilename);
+}
+
+async function exportMemoir(format) {
+  if (!currentMemoir) {
+    memoirStatus.textContent = "Bitte zuerst eine Buchvorschau erstellen.";
+    return;
+  }
+  const button = format === "pdf" ? memoirPdfButton : memoirDocxButton;
+  button.disabled = true;
+  const oldText = button.textContent;
+  button.textContent = "Wird erstellt …";
+  try {
+    const response = await apiFetch(`/memoir/export/${format}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ profile_id: currentProfileId, memoir: currentMemoir })
+    });
+    await saveBlobResponse(
+      response,
+      format === "pdf" ? "romans-erinnerungen.pdf" : "romans-erinnerungen.docx"
+    );
+    memoirStatus.textContent = "✓ Datei wurde erstellt.";
+  } catch (error) {
+    console.error(error);
+    memoirStatus.textContent = error.message;
+  } finally {
+    button.disabled = false;
+    button.textContent = oldText;
+  }
+}
+
+async function backupArchive() {
+  archiveBackupButton.disabled = true;
+  const oldText = archiveBackupButton.textContent;
+  archiveBackupButton.textContent = "Sicherung wird erstellt …";
+  archiveBackupStatus.textContent = "Originalaufnahmen werden mit eingepackt. Das kann etwas dauern …";
+  try {
+    await downloadFromApi(
+      `/export/archive?profile_id=${currentProfileId}`,
+      "romans-archiv.zip"
+    );
+    archiveBackupStatus.textContent = "✓ Archiv-Sicherung ist fertig.";
+  } catch (error) {
+    console.error(error);
+    archiveBackupStatus.textContent = error.message;
+  } finally {
+    archiveBackupButton.disabled = false;
+    archiveBackupButton.textContent = oldText;
+  }
+}
+
 function escapeHtml(value) {
   return String(value ?? "")
     .replaceAll("&", "&amp;")
@@ -2785,6 +3040,13 @@ passwordInput.addEventListener(
 );
 
 logoutButton.onclick = logout;
+settingsButton.onclick = showSettings;
+settingsBackButton.onclick = showHome;
+generateCompleteMemoirButton.onclick = () => generateMemoir("complete");
+generateShareMemoirButton.onclick = () => generateMemoir("share");
+memoirPdfButton.onclick = () => exportMemoir("pdf");
+memoirDocxButton.onclick = () => exportMemoir("docx");
+archiveBackupButton.onclick = backupArchive;
 
 homeNavTell.onclick = showHome;
 homeNavMemories.onclick = showMemories;
