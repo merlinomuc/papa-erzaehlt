@@ -223,62 +223,25 @@ function showScreen(screen) {
   window.scrollTo({ top: 0, behavior: "smooth" });
 }
 
-async function getFreshSession() {
-  let { data, error } = await supabaseClient.auth.getSession();
+async function apiFetch(path, options = {}) {
+  const { data, error } = await supabaseClient.auth.getSession();
 
   if (error || !data.session) {
-    return null;
+    await forceLogin();
+    throw new Error("Deine Anmeldung ist abgelaufen.");
   }
 
-  const session = data.session;
-  const expiresAtMs = Number(session.expires_at || 0) * 1000;
-  const expiresSoon = expiresAtMs && expiresAtMs - Date.now() < 120000;
+  const headers = new Headers(options.headers || {});
+  headers.set("Authorization", `Bearer ${data.session.access_token}`);
 
-  if (expiresSoon) {
-    const refreshed = await supabaseClient.auth.refreshSession();
-    if (!refreshed.error && refreshed.data.session) {
-      return refreshed.data.session;
-    }
-  }
-
-  return session;
-}
-
-async function apiFetch(path, options = {}) {
-  let session = await getFreshSession();
-
-  if (!session) {
-    showLogin();
-    throw new Error("Deine Anmeldung ist abgelaufen. Bitte erneut anmelden.");
-  }
-
-  const doFetch = async activeSession => {
-    const headers = new Headers(options.headers || {});
-    headers.set("Authorization", `Bearer ${activeSession.access_token}`);
-
-    return fetch(`${API}${path}`, {
-      ...options,
-      headers
-    });
-  };
-
-  let response = await doFetch(session);
-
-  // Bei langen KI-Vorgängen kann ein Access-Token inzwischen abgelaufen sein.
-  // Deshalb bei 401 zuerst still erneuern und genau einmal wiederholen.
-  // Wichtig: Wir melden den Benutzer NICHT sofort ab.
-  if (response.status === 401) {
-    const refreshed = await supabaseClient.auth.refreshSession();
-
-    if (!refreshed.error && refreshed.data.session) {
-      session = refreshed.data.session;
-      response = await doFetch(session);
-    }
-  }
+  const response = await fetch(`${API}${path}`, {
+    ...options,
+    headers
+  });
 
   if (response.status === 401) {
-    showLogin();
-    throw new Error("Die Anmeldung konnte nicht erneuert werden. Bitte erneut anmelden.");
+    await forceLogin();
+    throw new Error("Bitte erneut anmelden.");
   }
 
   return response;
@@ -3079,6 +3042,25 @@ async function downloadFromApi(path, fallbackFilename, options = {}) {
   await saveBlobResponse(response, fallbackFilename);
 }
 
+async function refreshSessionForLongAction() {
+  const { data: sessionData, error: sessionError } =
+    await supabaseClient.auth.getSession();
+
+  if (sessionError || !sessionData.session) {
+    throw new Error("Deine Anmeldung ist nicht mehr aktiv. Bitte die Seite neu laden und erneut anmelden.");
+  }
+
+  const refreshed = await supabaseClient.auth.refreshSession();
+
+  if (!refreshed.error && refreshed.data.session) {
+    return refreshed.data.session;
+  }
+
+  // Falls Supabase gerade keinen Refresh benötigt/zulässt, vorhandene
+  // noch gültige Session weiterverwenden statt den Benutzer abzumelden.
+  return sessionData.session;
+}
+
 async function exportMemoir(format) {
   if (!currentMemoir) {
     memoirStatus.textContent = "Bitte zuerst eine Buchvorschau erstellen.";
@@ -3097,6 +3079,7 @@ async function exportMemoir(format) {
   );
 
   try {
+    await refreshSessionForLongAction();
     const response = await apiFetch(`/memoir/export/${format}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -3124,6 +3107,7 @@ async function backupArchive() {
   archiveBackupButton.textContent = "Sicherung wird erstellt …";
   archiveBackupStatus.textContent = "Originalaufnahmen werden mit eingepackt. Das kann etwas dauern …";
   try {
+    await refreshSessionForLongAction();
     await downloadFromApi(
       `/export/archive?profile_id=${currentProfileId}`,
       "romans-archiv.zip"
