@@ -362,6 +362,23 @@
 
         <div id="memoirStatus" class="memoir-status" aria-live="polite"></div>
 
+        <section id="memoirWorking" class="memoir-working hidden" aria-live="polite" aria-busy="true">
+          <div class="memoir-working-head">
+            <div class="memoir-working-spinner" aria-hidden="true"></div>
+            <div>
+              <div id="memoirWorkingTitle" class="memoir-working-title">Ich arbeite an deinem Buch …</div>
+              <div id="memoirWorkingDetail" class="memoir-working-detail">Erinnerungen werden vorbereitet.</div>
+            </div>
+          </div>
+          <div class="memoir-progress-track" aria-hidden="true">
+            <div class="memoir-progress-bar"></div>
+          </div>
+          <div id="memoirWorkingElapsed" class="memoir-working-elapsed">Seit wenigen Sekunden in Arbeit …</div>
+          <div class="memoir-working-note">
+            Du kannst diese Seite offen lassen. Je nach Anzahl der Erinnerungen kann die Erstellung einige Minuten dauern.
+          </div>
+        </section>
+
         <section id="memoirPreview" class="memoir-preview hidden">
           <div class="eyebrow">Buchvorschau</div>
           <h2 id="memoirPreviewTitle"></h2>

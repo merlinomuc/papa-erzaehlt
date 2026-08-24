@@ -658,3 +658,34 @@ button:focus-visible,input:focus-visible,select:focus-visible{
 @media(max-width:430px){.memoir-export-actions{grid-template-columns:1fr}}
 
 .original-audio-player{width:100%;margin-top:14px;accent-color:#c58a32}
+
+
+/* Sichtbares Arbeits-Feedback für Memoiren/Export */
+.memoir-working{
+  margin:16px 0 20px;padding:18px 17px;border:1px solid rgba(217,155,62,.42);border-radius:18px;
+  background:linear-gradient(145deg,rgba(74,43,19,.42),rgba(8,5,3,.42));
+  box-shadow:0 0 28px rgba(207,139,45,.10),inset 0 0 30px rgba(0,0,0,.2)
+}
+.memoir-working-head{display:flex;gap:13px;align-items:center}
+.memoir-working-spinner{
+  width:34px;height:34px;flex:0 0 34px;border-radius:50%;
+  border:2px solid rgba(217,155,62,.22);border-top-color:#e5b45d;border-right-color:#bd7b28;
+  box-shadow:0 0 16px rgba(217,155,62,.18);animation:memoirSpin 1s linear infinite
+}
+@keyframes memoirSpin{to{transform:rotate(360deg)}}
+.memoir-working-title{color:#f0d49c;font-size:1.08rem;line-height:1.3}
+.memoir-working-detail{margin-top:3px;color:var(--cream-soft);font-size:.9rem;line-height:1.45}
+.memoir-progress-track{
+  position:relative;height:8px;margin:16px 0 10px;overflow:hidden;border-radius:999px;
+  border:1px solid rgba(217,155,62,.18);background:rgba(0,0,0,.42)
+}
+.memoir-progress-bar{
+  position:absolute;top:0;bottom:0;width:42%;border-radius:999px;
+  background:linear-gradient(90deg,rgba(166,99,24,.18),rgba(239,183,83,.95),rgba(166,99,24,.18));
+  box-shadow:0 0 12px rgba(229,180,93,.45);animation:memoirProgress 1.65s ease-in-out infinite
+}
+@keyframes memoirProgress{0%{left:-44%}100%{left:104%}}
+.memoir-working-elapsed{color:#c7a978;font-size:.78rem;text-align:center;letter-spacing:.02em}
+.memoir-working-note{margin-top:8px;color:#9e8c74;font-size:.76rem;line-height:1.45;text-align:center;font-style:italic}
+.memoir-working.hidden{display:none}
+@media (prefers-reduced-motion:reduce){.memoir-working-spinner,.memoir-progress-bar{animation-duration:3s}}

@@ -108,6 +108,10 @@ const memoirStats = document.getElementById("memoirStats");
 const generateCompleteMemoirButton = document.getElementById("generateCompleteMemoirButton");
 const generateShareMemoirButton = document.getElementById("generateShareMemoirButton");
 const memoirStatus = document.getElementById("memoirStatus");
+const memoirWorking = document.getElementById("memoirWorking");
+const memoirWorkingTitle = document.getElementById("memoirWorkingTitle");
+const memoirWorkingDetail = document.getElementById("memoirWorkingDetail");
+const memoirWorkingElapsed = document.getElementById("memoirWorkingElapsed");
 const memoirPreview = document.getElementById("memoirPreview");
 const memoirPreviewTitle = document.getElementById("memoirPreviewTitle");
 const memoirPreviewMeta = document.getElementById("memoirPreviewMeta");
@@ -219,25 +223,62 @@ function showScreen(screen) {
   window.scrollTo({ top: 0, behavior: "smooth" });
 }
 
-async function apiFetch(path, options = {}) {
-  const { data, error } = await supabaseClient.auth.getSession();
+async function getFreshSession() {
+  let { data, error } = await supabaseClient.auth.getSession();
 
   if (error || !data.session) {
-    await forceLogin();
-    throw new Error("Deine Anmeldung ist abgelaufen.");
+    return null;
   }
 
-  const headers = new Headers(options.headers || {});
-  headers.set("Authorization", `Bearer ${data.session.access_token}`);
+  const session = data.session;
+  const expiresAtMs = Number(session.expires_at || 0) * 1000;
+  const expiresSoon = expiresAtMs && expiresAtMs - Date.now() < 120000;
 
-  const response = await fetch(`${API}${path}`, {
-    ...options,
-    headers
-  });
+  if (expiresSoon) {
+    const refreshed = await supabaseClient.auth.refreshSession();
+    if (!refreshed.error && refreshed.data.session) {
+      return refreshed.data.session;
+    }
+  }
+
+  return session;
+}
+
+async function apiFetch(path, options = {}) {
+  let session = await getFreshSession();
+
+  if (!session) {
+    showLogin();
+    throw new Error("Deine Anmeldung ist abgelaufen. Bitte erneut anmelden.");
+  }
+
+  const doFetch = async activeSession => {
+    const headers = new Headers(options.headers || {});
+    headers.set("Authorization", `Bearer ${activeSession.access_token}`);
+
+    return fetch(`${API}${path}`, {
+      ...options,
+      headers
+    });
+  };
+
+  let response = await doFetch(session);
+
+  // Bei langen KI-Vorgängen kann ein Access-Token inzwischen abgelaufen sein.
+  // Deshalb bei 401 zuerst still erneuern und genau einmal wiederholen.
+  // Wichtig: Wir melden den Benutzer NICHT sofort ab.
+  if (response.status === 401) {
+    const refreshed = await supabaseClient.auth.refreshSession();
+
+    if (!refreshed.error && refreshed.data.session) {
+      session = refreshed.data.session;
+      response = await doFetch(session);
+    }
+  }
 
   if (response.status === 401) {
-    await forceLogin();
-    throw new Error("Bitte erneut anmelden.");
+    showLogin();
+    throw new Error("Die Anmeldung konnte nicht erneuert werden. Bitte erneut anmelden.");
   }
 
   return response;
@@ -2848,6 +2889,56 @@ async function saveTimeline() {
 }
 
 
+let memoirWorkingTimer = null;
+let memoirWorkingStartedAt = 0;
+let memoirWorkingStageIndex = 0;
+let memoirWorkingStages = [];
+
+function formatWorkingElapsed(seconds) {
+  if (seconds < 10) return "Seit wenigen Sekunden in Arbeit …";
+  if (seconds < 60) return `Seit ${seconds} Sekunden in Arbeit …`;
+  const minutes = Math.floor(seconds / 60);
+  const rest = seconds % 60;
+  return `Seit ${minutes} Min. ${String(rest).padStart(2, "0")} Sek. in Arbeit …`;
+}
+
+function startMemoirWorking(title, stages) {
+  if (memoirWorkingTimer) {
+    clearInterval(memoirWorkingTimer);
+  }
+  memoirWorkingTitle.textContent = title;
+  memoirWorkingStages = stages && stages.length ? stages : ["Die Datei wird vorbereitet …"];
+  memoirWorkingStageIndex = 0;
+  memoirWorkingDetail.textContent = memoirWorkingStages[0];
+  memoirWorkingStartedAt = Date.now();
+  memoirWorkingElapsed.textContent = "Seit wenigen Sekunden in Arbeit …";
+  memoirWorking.classList.remove("hidden");
+  memoirWorking.scrollIntoView({ behavior: "smooth", block: "center" });
+
+  memoirWorkingTimer = setInterval(() => {
+    const elapsed = Math.max(0, Math.floor((Date.now() - memoirWorkingStartedAt) / 1000));
+    memoirWorkingElapsed.textContent = formatWorkingElapsed(elapsed);
+
+    // Diese Texte sind bewusst nur Tätigkeits-Feedback, keine behaupteten Server-Prozentwerte.
+    const nextStage = Math.min(
+      memoirWorkingStages.length - 1,
+      Math.floor(elapsed / 8)
+    );
+    if (nextStage !== memoirWorkingStageIndex) {
+      memoirWorkingStageIndex = nextStage;
+      memoirWorkingDetail.textContent = memoirWorkingStages[nextStage];
+    }
+  }, 1000);
+}
+
+function stopMemoirWorking() {
+  if (memoirWorkingTimer) {
+    clearInterval(memoirWorkingTimer);
+    memoirWorkingTimer = null;
+  }
+  memoirWorking.classList.add("hidden");
+}
+
 async function loadMemoirStats() {
   memoirStats.textContent = "Erinnerungen werden gezählt …";
   try {
@@ -2869,6 +2960,7 @@ async function loadMemoirStats() {
 }
 
 async function showSettings() {
+  stopMemoirWorking();
   currentMemoir = null;
   memoirPreview.classList.add("hidden");
   memoirStatus.textContent = "";
@@ -2910,11 +3002,25 @@ async function generateMemoir(mode) {
   const otherButton = complete ? generateShareMemoirButton : generateCompleteMemoirButton;
   button.disabled = true;
   otherButton.disabled = true;
+  memoirPdfButton.disabled = true;
+  memoirDocxButton.disabled = true;
   memoirPreview.classList.add("hidden");
   currentMemoir = null;
-  memoirStatus.textContent = complete
-    ? "Die komplette Familienfassung wird geschrieben. Das kann einige Minuten dauern …"
-    : "Die Version zum Teilen wird geschrieben. Das kann einige Minuten dauern …";
+  memoirStatus.textContent = "";
+
+  startMemoirWorking(
+    complete
+      ? "Ich schreibe die komplette Familienfassung …"
+      : "Ich schreibe die Version zum Teilen …",
+    [
+      "Erinnerungen werden gesammelt und geprüft …",
+      "Zeiten, Orte und Zusammenhänge werden geordnet …",
+      "Eine sinnvolle Kapitelstruktur wird aufgebaut …",
+      "Die Kapitel werden aus Romans Erinnerungen geschrieben …",
+      "Wiederholungen werden geglättet und Übergänge geprüft …",
+      "Das Buch wird für die Vorschau fertiggestellt …"
+    ]
+  );
 
   try {
     const response = await apiFetch("/memoir/generate", {
@@ -2927,14 +3033,18 @@ async function generateMemoir(mode) {
       throw new Error(data.detail || "Das Buch konnte nicht erstellt werden.");
     }
     currentMemoir = data;
+    stopMemoirWorking();
     memoirStatus.textContent = "✓ Buchvorschau ist fertig.";
     renderMemoirPreview(data);
   } catch (error) {
     console.error(error);
-    memoirStatus.textContent = error.message;
+    stopMemoirWorking();
+    memoirStatus.textContent = `Fehler: ${error.message}`;
   } finally {
     button.disabled = false;
     otherButton.disabled = false;
+    memoirPdfButton.disabled = false;
+    memoirDocxButton.disabled = false;
   }
 }
 
@@ -2975,9 +3085,17 @@ async function exportMemoir(format) {
     return;
   }
   const button = format === "pdf" ? memoirPdfButton : memoirDocxButton;
-  button.disabled = true;
-  const oldText = button.textContent;
-  button.textContent = "Wird erstellt …";
+  memoirPdfButton.disabled = true;
+  memoirDocxButton.disabled = true;
+  memoirStatus.textContent = "";
+
+  startMemoirWorking(
+    format === "pdf" ? "Ich setze die PDF-Datei …" : "Ich erstelle die Word-Datei …",
+    format === "pdf"
+      ? ["Buchseiten werden gesetzt …", "Kapitel und Seitenumbrüche werden geprüft …", "Die druckbare PDF-Datei wird fertiggestellt …"]
+      : ["Kapitel werden in das Word-Dokument übertragen …", "Überschriften und Absätze werden formatiert …", "Die bearbeitbare Word-Datei wird fertiggestellt …"]
+  );
+
   try {
     const response = await apiFetch(`/memoir/export/${format}`, {
       method: "POST",
@@ -2988,13 +3106,15 @@ async function exportMemoir(format) {
       response,
       format === "pdf" ? "romans-erinnerungen.pdf" : "romans-erinnerungen.docx"
     );
-    memoirStatus.textContent = "✓ Datei wurde erstellt.";
+    stopMemoirWorking();
+    memoirStatus.textContent = "✓ Datei wurde erstellt und der Download gestartet.";
   } catch (error) {
     console.error(error);
-    memoirStatus.textContent = error.message;
+    stopMemoirWorking();
+    memoirStatus.textContent = `Fehler: ${error.message}`;
   } finally {
-    button.disabled = false;
-    button.textContent = oldText;
+    memoirPdfButton.disabled = false;
+    memoirDocxButton.disabled = false;
   }
 }
 
