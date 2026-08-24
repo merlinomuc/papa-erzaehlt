@@ -4221,15 +4221,23 @@ def build_memoir_pdf(memoir: dict):
     try:
         from reportlab.lib.pagesizes import A5
         from reportlab.lib import colors
-        from reportlab.lib.enums import TA_CENTER
+        from reportlab.lib.enums import TA_CENTER, TA_LEFT
         from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
         from reportlab.lib.units import mm
+        from reportlab.lib.utils import ImageReader
         from reportlab.platypus import (
-            SimpleDocTemplate,
+            BaseDocTemplate,
             Paragraph,
             Spacer,
             PageBreak,
+            Image,
+            Table,
+            TableStyle,
+            KeepTogether,
+            Frame,
+            PageTemplate,
         )
+        from reportlab.platypus.tableofcontents import TableOfContents
     except Exception as exc:
         raise HTTPException(
             status_code=500,
@@ -4237,116 +4245,425 @@ def build_memoir_pdf(memoir: dict):
         ) from exc
 
     buffer = io.BytesIO()
+
+    page_w, page_h = A5
+    dark_brown = colors.HexColor("#160E09")
+    leather = colors.HexColor("#24150D")
+    gold = colors.HexColor("#B98332")
+    bright_gold = colors.HexColor("#E2B765")
+    pale_gold = colors.HexColor("#D8BE8A")
+    cream = colors.HexColor("#F6F0E4")
+    warm_white = colors.HexColor("#FFFAEF")
+    ink = colors.HexColor("#261B14")
+    muted = colors.HexColor("#806C57")
+
+    logo_path = os.path.join(
+        os.path.dirname(__file__),
+        "assets",
+        "roman-logo.png",
+    )
+    logo_available = os.path.exists(logo_path)
+    logo_reader = ImageReader(logo_path) if logo_available else None
+
+    def german_export_date(value):
+        months = (
+            "Januar", "Februar", "März", "April", "Mai", "Juni",
+            "Juli", "August", "September", "Oktober", "November", "Dezember",
+        )
+        try:
+            dt = datetime.fromisoformat(clean_text(value).replace("Z", "+00:00"))
+        except Exception:
+            dt = datetime.now(timezone.utc)
+        return f"{dt.day}. {months[dt.month - 1]} {dt.year}"
+
+    mode_label = (
+        "Familienfassung"
+        if memoir.get("mode") == "complete"
+        else "Fassung zum Teilen"
+    )
+    export_date = german_export_date(memoir.get("generated_at"))
+
     styles = getSampleStyleSheet()
     styles.add(ParagraphStyle(
-        name="MemoirTitle",
+        name="MemoirCoverTitle",
         parent=styles["Title"],
         fontName="Times-Bold",
-        fontSize=28,
-        leading=34,
+        fontSize=27,
+        leading=31,
         alignment=TA_CENTER,
-        textColor=colors.HexColor("#4B2F20"),
-        spaceAfter=12,
+        textColor=bright_gold,
+        spaceAfter=8,
     ))
     styles.add(ParagraphStyle(
-        name="MemoirSubtitle",
+        name="MemoirCoverSubtitle",
         parent=styles["Normal"],
         fontName="Times-Italic",
-        fontSize=13,
-        leading=18,
+        fontSize=12.5,
+        leading=17,
         alignment=TA_CENTER,
-        textColor=colors.HexColor("#725B45"),
+        textColor=pale_gold,
+        spaceAfter=6,
+    ))
+    styles.add(ParagraphStyle(
+        name="MemoirCoverMeta",
+        parent=styles["Normal"],
+        fontName="Times-Roman",
+        fontSize=9.5,
+        leading=14,
+        alignment=TA_CENTER,
+        textColor=colors.HexColor("#BFA77D"),
+        spaceAfter=4,
+    ))
+    styles.add(ParagraphStyle(
+        name="MemoirTocTitle",
+        parent=styles["Heading1"],
+        fontName="Times-Bold",
+        fontSize=23,
+        leading=28,
+        alignment=TA_CENTER,
+        textColor=dark_brown,
+        spaceAfter=8,
+    ))
+    styles.add(ParagraphStyle(
+        name="MemoirChapterNumber",
+        parent=styles["Normal"],
+        fontName="Times-Bold",
+        fontSize=8.5,
+        leading=11,
+        alignment=TA_CENTER,
+        textColor=gold,
+        tracking=1.3,
+        spaceAfter=6,
     ))
     styles.add(ParagraphStyle(
         name="MemoirChapter",
         parent=styles["Heading1"],
         fontName="Times-Bold",
-        fontSize=20,
+        fontSize=21,
         leading=25,
-        textColor=colors.HexColor("#4B2F20"),
+        alignment=TA_CENTER,
+        textColor=dark_brown,
+        spaceAfter=7,
+        keepWithNext=True,
+    ))
+    styles.add(ParagraphStyle(
+        name="MemoirSection",
+        parent=styles["Heading1"],
+        fontName="Times-Bold",
+        fontSize=20,
+        leading=24,
+        alignment=TA_CENTER,
+        textColor=dark_brown,
         spaceAfter=8,
+        keepWithNext=True,
     ))
     styles.add(ParagraphStyle(
         name="MemoirPeriod",
         parent=styles["Normal"],
         fontName="Times-Italic",
-        fontSize=10.5,
+        fontSize=10.3,
         leading=14,
-        textColor=colors.HexColor("#8A6B45"),
-        spaceAfter=12,
+        alignment=TA_CENTER,
+        textColor=muted,
+        spaceAfter=13,
+        keepWithNext=True,
     ))
     styles.add(ParagraphStyle(
         name="MemoirBody",
         parent=styles["BodyText"],
         fontName="Times-Roman",
-        fontSize=11.2,
-        leading=17.2,
-        textColor=colors.HexColor("#201A16"),
-        spaceAfter=8,
+        fontSize=10.8,
+        leading=16.3,
+        textColor=ink,
+        spaceAfter=8.2,
+        alignment=TA_LEFT,
+        allowWidows=0,
+        allowOrphans=0,
+    ))
+    styles.add(ParagraphStyle(
+        name="MemoirSmall",
+        parent=styles["Normal"],
+        fontName="Times-Italic",
+        fontSize=8.5,
+        leading=12,
+        alignment=TA_CENTER,
+        textColor=muted,
     ))
 
-    doc = SimpleDocTemplate(
+    class MemoirDocTemplate(BaseDocTemplate):
+        def afterFlowable(self, flowable):
+            if not isinstance(flowable, Paragraph):
+                return
+            style_name = flowable.style.name
+            if style_name not in ("MemoirSection", "MemoirChapter"):
+                return
+            text = flowable.getPlainText()
+            level = 0 if style_name == "MemoirSection" else 1
+            page = self.canv.getPageNumber()
+            key = f"toc-{page}-{abs(hash(text))}"
+            self.canv.bookmarkPage(key)
+            self.canv.addOutlineEntry(text, key, level=level, closed=False)
+            self.notify("TOCEntry", (level, text, page, key))
+
+    doc = MemoirDocTemplate(
         buffer,
         pagesize=A5,
-        leftMargin=18 * mm,
-        rightMargin=18 * mm,
-        topMargin=20 * mm,
+        leftMargin=19 * mm,
+        rightMargin=19 * mm,
+        topMargin=22 * mm,
         bottomMargin=19 * mm,
         title=clean_text(memoir.get("title")) or "Romans Erinnerungen",
         author="Roman",
     )
 
-    def footer(canvas, document):
+    def draw_corner_ornaments(canvas):
+        canvas.setStrokeColor(colors.Color(0.72, 0.48, 0.18, alpha=0.60))
+        canvas.setLineWidth(0.7)
+        inset = 8.5 * mm
+        length = 13 * mm
+        # schlichte, druckfreundliche Eckornamente
+        for x1, y1, sx, sy in (
+            (inset, page_h - inset, 1, -1),
+            (page_w - inset, page_h - inset, -1, -1),
+            (inset, inset, 1, 1),
+            (page_w - inset, inset, -1, 1),
+        ):
+            canvas.line(x1, y1, x1 + sx * length, y1)
+            canvas.line(x1, y1, x1, y1 + sy * length)
+            canvas.circle(x1 + sx * 2.2 * mm, y1 + sy * 2.2 * mm, 0.8 * mm, stroke=1, fill=0)
+
+    def page_decoration(canvas, document):
         canvas.saveState()
-        canvas.setStrokeColor(colors.HexColor("#D7C9AF"))
-        canvas.line(18 * mm, 13 * mm, A5[0] - 18 * mm, 13 * mm)
-        canvas.setFont("Times-Roman", 8.5)
-        canvas.setFillColor(colors.HexColor("#7D6D5F"))
-        canvas.drawCentredString(A5[0] / 2, 9.5 * mm, str(document.page))
+        page_num = canvas.getPageNumber()
+
+        if page_num == 1:
+            canvas.setFillColor(dark_brown)
+            canvas.rect(0, 0, page_w, page_h, fill=1, stroke=0)
+            canvas.setFillColor(leather)
+            canvas.roundRect(
+                7 * mm,
+                7 * mm,
+                page_w - 14 * mm,
+                page_h - 14 * mm,
+                5 * mm,
+                fill=1,
+                stroke=0,
+            )
+            canvas.setStrokeColor(gold)
+            canvas.setLineWidth(0.8)
+            canvas.roundRect(
+                8.5 * mm,
+                8.5 * mm,
+                page_w - 17 * mm,
+                page_h - 17 * mm,
+                4 * mm,
+                fill=0,
+                stroke=1,
+            )
+            canvas.setStrokeColor(colors.Color(0.85, 0.64, 0.30, alpha=0.45))
+            canvas.roundRect(
+                11 * mm,
+                11 * mm,
+                page_w - 22 * mm,
+                page_h - 22 * mm,
+                3 * mm,
+                fill=0,
+                stroke=1,
+            )
+            draw_corner_ornaments(canvas)
+            canvas.restoreState()
+            return
+
+        canvas.setFillColor(cream)
+        canvas.rect(0, 0, page_w, page_h, fill=1, stroke=0)
+        canvas.setStrokeColor(colors.Color(0.60, 0.39, 0.14, alpha=0.38))
+        canvas.setLineWidth(0.55)
+        canvas.rect(
+            8.5 * mm,
+            8.5 * mm,
+            page_w - 17 * mm,
+            page_h - 17 * mm,
+            fill=0,
+            stroke=1,
+        )
+        draw_corner_ornaments(canvas)
+
+        if logo_reader:
+            canvas.drawImage(
+                logo_reader,
+                12 * mm,
+                page_h - 17.5 * mm,
+                width=7 * mm,
+                height=7 * mm,
+                preserveAspectRatio=True,
+                mask="auto",
+            )
+        else:
+            canvas.setStrokeColor(gold)
+            canvas.circle(15.5 * mm, page_h - 14 * mm, 3.3 * mm, fill=0, stroke=1)
+            canvas.setFont("Times-Bold", 8)
+            canvas.setFillColor(gold)
+            canvas.drawCentredString(15.5 * mm, page_h - 15.2 * mm, "R")
+
+        canvas.setFont("Times-Bold", 7.7)
+        canvas.setFillColor(colors.HexColor("#6D5235"))
+        canvas.drawString(22 * mm, page_h - 14.8 * mm, "ROMANS ERINNERUNGEN")
+        canvas.setFont("Times-Italic", 7.4)
+        canvas.setFillColor(muted)
+        canvas.drawRightString(page_w - 12 * mm, page_h - 14.8 * mm, mode_label)
+
+        canvas.setStrokeColor(colors.HexColor("#CDB98F"))
+        canvas.setLineWidth(0.45)
+        canvas.line(12 * mm, 13 * mm, page_w - 12 * mm, 13 * mm)
+        canvas.setFont("Times-Roman", 8)
+        canvas.setFillColor(muted)
+        canvas.drawCentredString(page_w / 2, 9.5 * mm, str(page_num))
         canvas.restoreState()
 
-    story = [Spacer(1, 42 * mm)]
-    story.append(Paragraph(xml_escape(clean_text(memoir.get("title")) or "Romans Erinnerungen"), styles["MemoirTitle"]))
-    subtitle = clean_text(memoir.get("subtitle"))
-    if subtitle:
-        story.append(Paragraph(xml_escape(subtitle), styles["MemoirSubtitle"]))
+    story = []
+
+    # Titelseite - bewusst dunkel wie die App, Innenseiten druckfreundlich hell.
     story.append(Spacer(1, 18 * mm))
-    label = "Familienfassung" if memoir.get("mode") == "complete" else "Version zum Teilen"
-    story.append(Paragraph(xml_escape(label), styles["MemoirSubtitle"]))
+    if logo_available:
+        story.append(Image(logo_path, width=34 * mm, height=34 * mm))
+        story.append(Spacer(1, 8 * mm))
+    else:
+        story.append(Spacer(1, 20 * mm))
+
+    story.append(Paragraph(
+        xml_escape(clean_text(memoir.get("title")) or "Romans Erinnerungen"),
+        styles["MemoirCoverTitle"],
+    ))
+    subtitle = clean_text(memoir.get("subtitle")) or "Ein Leben voller Geschichten"
+    story.append(Paragraph(xml_escape(subtitle), styles["MemoirCoverSubtitle"]))
+    story.append(Spacer(1, 9 * mm))
+
+    cover_rule = Table([["R"]], colWidths=[76 * mm])
+    cover_rule.setStyle(TableStyle([
+        ("ALIGN", (0, 0), (-1, -1), "CENTER"),
+        ("TEXTCOLOR", (0, 0), (-1, -1), bright_gold),
+        ("FONTNAME", (0, 0), (-1, -1), "Times-Roman"),
+        ("FONTSIZE", (0, 0), (-1, -1), 13),
+        ("LINEABOVE", (0, 0), (-1, -1), 0.45, gold),
+        ("LINEBELOW", (0, 0), (-1, -1), 0.45, gold),
+        ("TOPPADDING", (0, 0), (-1, -1), 5),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
+    ]))
+    story.append(cover_rule)
+    story.append(Spacer(1, 9 * mm))
+    story.append(Paragraph(xml_escape(mode_label), styles["MemoirCoverSubtitle"]))
+    story.append(Spacer(1, 3 * mm))
+    story.append(Paragraph(
+        xml_escape(f"Exportiert am {export_date}"),
+        styles["MemoirCoverMeta"],
+    ))
+    story.append(PageBreak())
+
+    # Inhaltsverzeichnis
+    story.append(Spacer(1, 7 * mm))
+    story.append(Paragraph("Inhalt", styles["MemoirTocTitle"]))
+    story.append(Paragraph("R", styles["MemoirSmall"]))
+    story.append(Spacer(1, 7 * mm))
+    toc = TableOfContents()
+    toc.levelStyles = [
+        ParagraphStyle(
+            name="TOCSection",
+            fontName="Times-Bold",
+            fontSize=10.8,
+            leading=16,
+            leftIndent=0,
+            firstLineIndent=0,
+            textColor=dark_brown,
+            spaceBefore=5,
+        ),
+        ParagraphStyle(
+            name="TOCChapter",
+            fontName="Times-Roman",
+            fontSize=10.2,
+            leading=15,
+            leftIndent=5 * mm,
+            firstLineIndent=0,
+            textColor=ink,
+            spaceBefore=2,
+        ),
+    ]
+    toc.dotsMinLevel = 0
+    story.append(toc)
     story.append(PageBreak())
 
     intro = clean_text(memoir.get("introduction"))
     if intro:
-        story.append(Paragraph("Einleitung", styles["MemoirChapter"]))
+        story.append(Spacer(1, 15 * mm))
+        story.append(Paragraph("Einleitung", styles["MemoirSection"]))
+        story.append(Paragraph("R", styles["MemoirSmall"]))
+        story.append(Spacer(1, 7 * mm))
         for para in re.split(r"\n\s*\n", intro):
             if clean_text(para):
                 story.append(Paragraph(xml_escape(clean_text(para)), styles["MemoirBody"]))
         story.append(PageBreak())
 
-    for index, chapter in enumerate(memoir.get("chapters") or [], start=1):
+    chapters = memoir.get("chapters") or []
+    for index, chapter in enumerate(chapters, start=1):
         title = clean_text(chapter.get("title")) or f"Kapitel {index}"
-        story.append(Paragraph(xml_escape(title), styles["MemoirChapter"]))
         period = clean_text(chapter.get("period"))
+
+        story.append(Spacer(1, 14 * mm))
+        story.append(Paragraph(
+            f"KAPITEL {index:02d}",
+            styles["MemoirChapterNumber"],
+        ))
+        story.append(Paragraph(xml_escape(title), styles["MemoirChapter"]))
         if period:
             story.append(Paragraph(xml_escape(period), styles["MemoirPeriod"]))
+        else:
+            story.append(Spacer(1, 5 * mm))
+        story.append(Paragraph("R", styles["MemoirSmall"]))
+        story.append(Spacer(1, 7 * mm))
+
         for para in re.split(r"\n\s*\n", clean_text(chapter.get("text"))):
             if clean_text(para):
                 story.append(Paragraph(xml_escape(clean_text(para)), styles["MemoirBody"]))
-        if index < len(memoir.get("chapters") or []):
+
+        if index < len(chapters):
             story.append(PageBreak())
 
     epilogue = clean_text(memoir.get("epilogue"))
     if epilogue:
         story.append(PageBreak())
-        story.append(Paragraph("Ausklang", styles["MemoirChapter"]))
+        story.append(Spacer(1, 15 * mm))
+        story.append(Paragraph("Ausklang", styles["MemoirSection"]))
+        story.append(Paragraph("R", styles["MemoirSmall"]))
+        story.append(Spacer(1, 7 * mm))
         for para in re.split(r"\n\s*\n", epilogue):
             if clean_text(para):
                 story.append(Paragraph(xml_escape(clean_text(para)), styles["MemoirBody"]))
 
-    doc.build(story, onFirstPage=footer, onLaterPages=footer)
+    # Eigene Seitentemplates, damit multiBuild für das Inhaltsverzeichnis
+    # verwendet werden kann und zugleich Titel-/Innenseiten gestaltet sind.
+    content_frame = Frame(
+        doc.leftMargin,
+        doc.bottomMargin,
+        doc.width,
+        doc.height,
+        id="memoir-content",
+        leftPadding=0,
+        rightPadding=0,
+        topPadding=0,
+        bottomPadding=0,
+    )
+    doc.addPageTemplates([
+        PageTemplate(
+            id="MemoirPages",
+            frames=[content_frame],
+            onPage=page_decoration,
+        ),
+    ])
+
+    # multiBuild ist nötig, damit das Inhaltsverzeichnis im zweiten Durchlauf
+    # die echten Seitenzahlen erhält.
+    doc.multiBuild(story)
     buffer.seek(0)
     return buffer
-
 
 def build_memoir_docx(memoir: dict):
     try:
@@ -4385,7 +4702,7 @@ def build_memoir_docx(memoir: dict):
         r.italic = True
         r.font.size = Pt(13)
 
-    label = "Familienfassung" if memoir.get("mode") == "complete" else "Version zum Teilen"
+    label = "Familienfassung" if memoir.get("mode") == "complete" else "Fassung zum Teilen"
     p = doc.add_paragraph()
     p.alignment = WD_ALIGN_PARAGRAPH.CENTER
     p.add_run(label).italic = True

@@ -2914,7 +2914,7 @@ async function loadMemoirStats() {
     }
     memoirStats.innerHTML = `
       <strong>${data.total}</strong> Erinnerungen insgesamt<br>
-      <span>${data.family_only} nur für die Familie · ${data.shareable} für die Version zum Teilen</span>
+      <span>${data.family_only} nur für die Familie · ${data.shareable} für die Fassung zum Teilen</span>
     `;
   } catch (error) {
     console.error(error);
@@ -2936,7 +2936,7 @@ function renderMemoirPreview(memoir) {
   memoirPreviewTitle.textContent = memoir.title || "Romans Erinnerungen";
   const familyText = memoir.mode === "complete"
     ? "Familienfassung · enthält auch familieninterne Erinnerungen"
-    : "Version zum Teilen · nur freigegebene Erinnerungen";
+    : "Fassung zum Teilen · nur freigegebene Erinnerungen";
   memoirPreviewMeta.textContent = `${familyText} · ${memoir.memory_count || 0} Erinnerungen`;
   memoirPreviewIntro.textContent = memoir.introduction || "";
   memoirChapterList.innerHTML = "";
@@ -2973,8 +2973,8 @@ async function generateMemoir(mode) {
 
   startMemoirWorking(
     complete
-      ? "Ich schreibe die komplette Familienfassung …"
-      : "Ich schreibe die Version zum Teilen …",
+      ? "Ich schreibe die Familienfassung …"
+      : "Ich schreibe die Fassung zum Teilen …",
     [
       "Erinnerungen werden gesammelt und geprüft …",
       "Zeiten, Orte und Zusammenhänge werden geordnet …",
